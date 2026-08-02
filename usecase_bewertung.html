@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KI Use-Case Bewertung</title>
+<style>
+/* Fonts: kein CDN-Abruf (DSGVO). Für IBM-Plex-Optik die woff2-Dateien neben die
+   HTML-Datei in ./fonts/ legen und diese @font-face-Blöcke einkommentieren —
+   ohne die Dateien greift der Systemschrift-Fallback.
+@font-face { font-family: 'IBM Plex Sans'; src: url('fonts/ibm-plex-sans-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans'; src: url('fonts/ibm-plex-sans-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans'; src: url('fonts/ibm-plex-sans-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'IBM Plex Mono'; src: url('fonts/ibm-plex-mono-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+*/
+:root {
+  --teal-900: #0D3D42;
+  --teal-700: #0D5C63;
+  --teal-500: #14919B;
+  --teal-100: #E0F4F5;
+  --teal-50:  #F0F9FA;
+  --amber-600: #D97706;
+  --amber-100: #FEF3C7;
+  --red-700:   #B91C1C;
+  --red-100:   #FEE2E2;
+  --green-700: #15803D;
+  --green-100: #DCFCE7;
+  --slate-800: #1C2B2D;
+  --slate-500: #4B6268;
+  --slate-300: #B0C0C2;
+  --slate-100: #E8EDEF;
+  --slate-50:  #F4F7F8;
+  --white:     #FFFFFF;
+  --shadow-sm: 0 1px 3px rgba(13,60,66,.08);
+  --shadow-md: 0 4px 16px rgba(13,60,66,.10);
+  --radius:    10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--slate-50);
+  color: var(--slate-800);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+.header {
+  background: var(--teal-700);
+  color: var(--white);
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.header-icon { font-size: 22px; }
+.header h1 { font-size: 17px; font-weight: 600; letter-spacing: .01em; }
+.header p  { font-size: 13px; opacity: .75; margin-top: 1px; }
+
+/* ── Layout ── */
+.app { display: flex; flex: 1; max-width: 1100px; margin: 0 auto; width: 100%; padding: 32px 24px; gap: 28px; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+}
+.step-nav { list-style: none; }
+.step-nav li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 20px;
+  position: relative;
+}
+.step-nav li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 30px;
+  width: 2px;
+  height: calc(100% - 10px);
+  background: var(--slate-200, #dde3e5);
+}
+.step-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--slate-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  background: var(--white);
+  color: var(--slate-500);
+  position: relative;
+  z-index: 1;
+  transition: all .2s;
+}
+.step-nav li.active .step-dot  { background: var(--teal-700); border-color: var(--teal-700); color: var(--white); }
+.step-nav li.done .step-dot    { background: var(--teal-500); border-color: var(--teal-500); color: var(--white); }
+.step-nav li.blocked .step-dot { background: var(--red-700); border-color: var(--red-700); color: var(--white); }
+.step-label { padding-top: 5px; }
+.step-label strong { font-size: 13px; font-weight: 600; display: block; }
+.step-label span { font-size: 12px; color: var(--slate-500); }
+
+.summary-box {
+  background: var(--white);
+  border: 1px solid var(--slate-100);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 24px;
+  box-shadow: var(--shadow-sm);
+}
+.summary-box h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--slate-500); margin-bottom: 12px; }
+.summary-item { margin-bottom: 8px; }
+.summary-item .si-label { font-size: 11px; color: var(--slate-500); font-weight: 500; }
+.summary-item .si-value { font-size: 13px; color: var(--slate-800); font-weight: 400; margin-top: 1px; }
+
+/* ── Main Card ── */
+.main { flex: 1; }
+
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 36px 40px;
+  animation: fadeIn .25s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+
+.card-step { font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; color: var(--teal-500); font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .1em; }
+.card h2 { font-size: 22px; font-weight: 600; line-height: 1.3; margin-bottom: 8px; }
+.card .card-sub { font-size: 14px; color: var(--slate-500); margin-bottom: 28px; line-height: 1.5; }
+
+/* ── Inputs ── */
+.field { margin-bottom: 24px; }
+.field label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+.field .hint { font-size: 12px; color: var(--slate-500); margin-bottom: 8px; }
+.field details.hint-detail { font-size: 12px; color: var(--slate-500); margin-bottom: 8px; }
+.field details.hint-detail summary { cursor: pointer; padding: 4px 0; list-style: none; user-select: none; color: var(--slate-700); font-size: 13px; }
+.field details.hint-detail summary::-webkit-details-marker { display: none; }
+.field details.hint-detail summary::before { content: '▸ '; color: var(--teal-700); font-size: 11px; transition: transform .15s; display: inline-block; }
+.field details.hint-detail[open] summary::before { content: '▾ '; }
+.field details.hint-detail summary:hover { color: var(--teal-700); }
+.field details.hint-detail .detail-body { padding: 6px 0 4px 14px; border-left: 2px solid var(--slate-100); margin-top: 4px; line-height: 1.5; }
+
+input[type="text"], textarea, select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--slate-300);
+  border-radius: 7px;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--slate-800);
+  background: var(--white);
+  transition: border-color .15s;
+  resize: vertical;
+}
+input[type="text"]:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--teal-500);
+  box-shadow: 0 0 0 3px rgba(20,145,155,.12);
+}
+
+.radio-group, .check-group { display: flex; flex-direction: column; gap: 10px; }
+.radio-option, .check-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--slate-100);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.radio-option:hover, .check-option:hover { border-color: var(--teal-500); background: var(--teal-50); }
+.radio-option.selected, .check-option.checked { border-color: var(--teal-500); background: var(--teal-50); }
+.radio-option input, .check-option input { margin-top: 2px; accent-color: var(--teal-700); width: 16px; height: 16px; cursor: pointer; }
+.radio-option .opt-text, .check-option .opt-text { flex: 1; }
+.radio-option .opt-text strong, .check-option .opt-text strong { font-size: 14px; font-weight: 500; display: block; }
+.radio-option .opt-text span, .check-option .opt-text span { font-size: 12px; color: var(--slate-500); }
+
+.yn-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.yn-group.two { grid-template-columns: 1fr 1fr; }
+.yn-btn {
+  padding: 12px;
+  border: 1.5px solid var(--slate-300);
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--white);
+  color: var(--slate-800);
+  transition: all .15s;
+  user-select: none;
+}
+.yn-btn:hover { border-color: var(--teal-500); background: var(--teal-50); }
+.yn-btn.selected { border-color: var(--teal-700); background: var(--teal-700); color: var(--white); }
+.yn-btn.danger.selected { border-color: var(--red-700); background: var(--red-700); color: var(--white); }
+.yn-btn.warning.selected { border-color: var(--amber-600); background: var(--amber-600); color: var(--white); }
+.yn-btn:focus-visible { outline: 3px solid var(--teal-500); outline-offset: 2px; }
+
+/* ── Alert boxes ── */
+.alert { border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 14px; line-height: 1.5; }
+.alert-red  { background: var(--red-100); border-left: 4px solid var(--red-700); color: #7f1d1d; }
+.alert-amber { background: var(--amber-100); border-left: 4px solid var(--amber-600); color: #78350f; }
+.alert-green { background: var(--green-100); border-left: 4px solid var(--green-700); color: #14532d; }
+.alert-teal { background: var(--teal-100); border-left: 4px solid var(--teal-700); color: var(--teal-900); }
+.alert strong { font-weight: 600; }
+
+/* ── Buttons ── */
+.btn-row { display: flex; gap: 12px; margin-top: 32px; }
+.btn {
+  padding: 11px 24px;
+  border-radius: 7px;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+}
+.btn-primary { background: var(--teal-700); color: var(--white); }
+.btn-primary:hover { background: var(--teal-900); }
+.btn-primary:disabled { background: var(--slate-300); cursor: not-allowed; }
+.btn-secondary { background: var(--white); color: var(--slate-800); border: 1.5px solid var(--slate-300); }
+.btn-secondary:hover { border-color: var(--teal-500); color: var(--teal-700); }
+.btn-danger { background: var(--red-700); color: var(--white); }
+.btn-danger:hover { background: #991b1b; }
+
+/* ── Result page ── */
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+.risk-badge.verboten  { background: var(--red-100);   color: var(--red-700);   border: 2px solid var(--red-700); }
+.risk-badge.hoch      { background: #FFF7ED;          color: #C2410C;         border: 2px solid #C2410C; }
+.risk-badge.begrenzt  { background: var(--amber-100); color: var(--amber-600); border: 2px solid var(--amber-600); }
+.risk-badge.minimal   { background: var(--green-100); color: var(--green-700); border: 2px solid var(--green-700); }
+.risk-badge.kein-ki   { background: var(--slate-50);  color: var(--slate-700); border: 2px solid var(--slate-200); }
+
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+.reasoning-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 18px 0 24px; }
+.reasoning-item { background: var(--slate-50); border-left: 3px solid var(--teal-500); border-radius: 4px; padding: 12px 14px; }
+.reasoning-item h4 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--teal-700); margin-bottom: 6px; }
+.reasoning-item p { font-size: 13px; line-height: 1.5; color: var(--slate-700); margin: 0; }
+.result-item { background: var(--slate-50); border-radius: 8px; padding: 16px; }
+.result-item h4 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--slate-500); margin-bottom: 6px; }
+.result-item p { font-size: 14px; line-height: 1.5; }
+
+.next-steps { list-style: none; }
+.next-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--slate-100);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.next-steps li:last-child { border-bottom: none; }
+.ns-num { width: 24px; height: 24px; border-radius: 50%; background: var(--teal-100); color: var(--teal-700); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Briefing ── */
+.briefing-section { border-top: 1px solid var(--slate-100); margin-top: 28px; padding-top: 24px; }
+.briefing-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.briefing-section p  { font-size: 13px; color: var(--slate-500); margin-bottom: 16px; }
+.briefing-output {
+  background: var(--slate-50);
+  border: 1px solid var(--slate-100);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  min-height: 80px;
+}
+.copy-btn { margin-top: 10px; }
+
+.disclaimer {
+  max-width: 1100px;
+  margin: 24px auto 32px;
+  padding: 20px 32px;
+  border-top: 1px solid var(--slate-100);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--slate-500);
+}
+.disclaimer strong { color: var(--slate-700); font-weight: 600; }
+.disclaimer p { margin: 0 0 8px; }
+.disclaimer .meta { font-size: 10px; color: var(--slate-500); margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--slate-100); }
+
+@media (max-width: 720px) {
+  .app { flex-direction: column; padding: 16px; }
+  .sidebar { width: 100%; }
+  .card { padding: 24px 20px; }
+  .result-grid { grid-template-columns: 1fr; }
+  .reasoning-grid { grid-template-columns: 1fr; }
+  .disclaimer { padding: 16px; }
+  .yn-group { grid-template-columns: 1fr; }
+}
+
+@media print {
+  body { background: white !important; }
+  .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .sidebar { display: none !important; }
+  .app { padding: 0 !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; padding: 24px !important; }
+  .btn-row, .briefing-section { display: none !important; }
+  .disclaimer { font-size: 10px !important; color: #555 !important; }
+  .field .hint { color: #666 !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">⚖️</div>
+  <div>
+    <h1>KI Use-Case Bewertung & AI Act Klassifizierung</h1>
+    <p>Strukturierte Erstbewertung · Risikoklassifizierung · Stakeholder-Briefing</p>
+  </div>
+</div>
+
+<div class="app">
+  <aside class="sidebar">
+    <ul class="step-nav" id="stepNav"></ul>
+    <div class="summary-box" id="summaryBox">
+      <h3>Zusammenfassung</h3>
+      <p style="font-size:13px;color:var(--slate-500)">Erscheint während der Bewertung.</p>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="card" id="mainCard"></div>
+  </main>
+</div>
+
+<footer class="disclaimer">
+  <p><strong>Keine Rechtsberatung.</strong> Die KI Use-Case Bewertung erfolgt auf Basis einer schematischen Auswertung der eingegebenen Antworten. Die Klassifizierung stellt keine juristische Beratung oder Auskunft dar und kann eine solche nicht ersetzen. Hochrisiko-Einstufungen, Art.-6-Abs.-3-Ausnahmen und Grenzfälle erfordern juristische Prüfung.</p>
+  <p><strong>Keine Gewähr.</strong> Yvonne Pöppelbaum übernimmt keine Gewähr für die Richtigkeit, Vollständigkeit oder Aktualität der durch das Tool erzeugten Einschätzungen. Aus der Nutzung können keine Ansprüche abgeleitet werden, und es kommt kein Vertragsverhältnis zustande.</p>
+  <p><strong>Datengrundlage.</strong> Das Tool basiert auf der Verordnung (EU) 2024/1689 vom 12. Juli 2024 in der durch die Verordnung (EU) 2026/1744 vom 8. Juli 2026 („Digital Omnibus on AI") geänderten Fassung, dem GPAI Code of Practice (10. Juli 2025) sowie auf DSGVO, BetrVG und AGG. Die Entwurfs-Leitlinien der Kommission zur Hochrisiko-Einstufung (19. Mai 2026) sind berücksichtigt, aber noch nicht final. Regulatorische Änderungen nach Juli 2026 sind nicht abgebildet.</p>
+  <p><strong>Datenschutz.</strong> Alle Eingaben verbleiben in der lokalen Browser-Sitzung. Bei aktivierter Zwischenspeicherung liegen sie ausschließlich im lokalen Browser-Storage. Es findet keine Übertragung an Server oder Drittdienste statt.</p>
+  <div class="meta">
+    KI Use-Case Bewertung &amp; AI Act Klassifizierung · Version 1.2 · August 2026 · entwickelt von Yvonne Pöppelbaum · AI Adoption · Regulatory Intelligence · MIT-Lizenz (siehe LICENSE)
+  </div>
+</footer>
+
+<script>
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const state = {
+  step: 0,
+  answers: {},
+  blocked: false,
+  riskClass: null,
+  briefing: '',
+  persistEnabled: false
+};
+
+// ─────────────────────────────────────────────
+// PERSISTENCE (Opt-in localStorage)
+// ─────────────────────────────────────────────
+const STORAGE_KEY = 'ki-bewertung-v1.2';
+function saveState() {
+  if (!state.persistEnabled) return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      step: state.step,
+      answers: state.answers,
+      riskClass: state.riskClass,
+      briefing: state.briefing,
+      persistEnabled: true,
+      savedAt: new Date().toISOString()
+    }));
+  } catch (e) { /* localStorage voll oder deaktiviert — stiller Fail */ }
+}
+function loadStateFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
+function clearStoredState() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+}
+function enablePersist() {
+  state.persistEnabled = true;
+  saveState();
+}
+function disablePersist() {
+  state.persistEnabled = false;
+  clearStoredState();
+}
+function resumeFromStorage(stored) {
+  state.step = stored.step || 0;
+  state.answers = stored.answers || {};
+  state.riskClass = stored.riskClass || null;
+  state.briefing = stored.briefing || '';
+  state.persistEnabled = true;
+  render();
+}
+
+// ─────────────────────────────────────────────
+// STEP DEFINITIONS
+// ─────────────────────────────────────────────
+const STEPS = [
+  { id: 'wertbeitrag', label: 'Wertbeitrag',        sub: 'Lohnt sich der Use Case?' },
+  { id: 'problem',     label: 'Problemdefinition',  sub: 'Was soll gelöst werden?' },
+  { id: 'daten',       label: 'Datenlage',          sub: 'Welche Daten sind betroffen?' },
+  { id: 'verboten',    label: 'Verbotsprüfung',     sub: 'Art. 5 EU AI Act' },
+  { id: 'hochrisiko',  label: 'Hochrisiko',         sub: 'Anhang III EU AI Act' },
+  { id: 'governance',  label: 'Governance',         sub: 'Team & Compliance' },
+  { id: 'ergebnis',    label: 'Ergebnis',           sub: 'Risikoklasse & Briefing' },
+];
+
+// ─────────────────────────────────────────────
+// LOOKUP-MAPS für Export & Anzeige
+// ─────────────────────────────────────────────
+const NUTZER_LABELS = {
+  intern_ma:       'Mitarbeitende (intern)',
+  intern_fuehrung: 'Führungskräfte (intern)',
+  extern_kunden:   'Kund:innen (extern)',
+  extern_dritte:   'Externe Dritte (Partner, Lieferanten)',
+  behoerden:       'Behörden / Öffentlichkeit'
+};
+const DATEN_ARTEN_LABELS = {
+  kontakt:        'Kontakt-/Stammdaten',
+  kommunikation:  'Kommunikationsinhalte',
+  leistung:       'Leistungs-/Verhaltensdaten',
+  gesundheit:     'Gesundheits-/medizinische Daten',
+  biometrie:      'Biometrische Daten',
+  standort:       'Standort-/Bewegungsdaten',
+  finanzen:       'Finanzdaten',
+  keine:          'Keine personenbezogenen Daten'
+};
+function labelize(map, slugs) {
+  return (slugs || []).map(s => map[s] || s);
+}
+
+const ROLLE_LABELS = {
+  anbieter:    'Anbieter',
+  betreiber:   'Betreiber',
+  importeur:   'Importeur',
+  haendler:    'Händler',
+  vertreter:   'Bevollmächtigter Vertreter'
+};
+const ROLLE_HINTS = {
+  anbieter:    'Sie entwickeln das KI-System selbst, lassen es entwickeln oder bringen es unter eigenem Namen in den Verkehr (Art. 3 Nr. 3).',
+  betreiber:   'Sie nutzen das KI-System unter eigener Verantwortung — die häufigste Rolle für Unternehmen, die KI einsetzen (Art. 3 Nr. 4).',
+  importeur:   'Sie bringen ein außerhalb der EU entwickeltes System erstmals in der EU in den Verkehr (Art. 3 Nr. 6).',
+  haendler:    'Sie stellen ein KI-System auf dem EU-Markt zur Verfügung, ohne Anbieter oder Importeur zu sein (Art. 3 Nr. 7).',
+  vertreter:   'Sie vertreten einen Anbieter aus einem Drittland gegenüber EU-Behörden (Art. 3 Nr. 5).'
+};
+
+// ─────────────────────────────────────────────
+// AI ACT CLASSIFICATION LOGIC
+// ─────────────────────────────────────────────
+function classifyRisk(a) {
+  // Vorprüfung: Ist es überhaupt ein KI-System nach Art. 3 Abs. 1?
+  if (a.is_ai_system === 'nein') {
+    return { class: 'kein-ki', label: 'Kein KI-System nach AI-VO', emoji: 'ℹ️',
+      desc: 'Auf Basis der Selbsteinschätzung greift die EU-KI-Verordnung voraussichtlich nicht (Art. 3 Abs. 1 nicht erfüllt). DSGVO, AGG und ggf. Branchenrecht bleiben davon unberührt.' };
+  }
+  // Prohibited (Art. 5 Abs. 1 lit. a–h)
+  const verboteneFelder = [
+    'verboten_manipulation',         // lit. a
+    'verboten_schwachstellen',       // lit. b
+    'verboten_social_scoring',       // lit. c
+    'verboten_predictive_policing',  // lit. d
+    'verboten_scraping',             // lit. e
+    'verboten_emotion',              // lit. f
+    'verboten_bio_kategorisierung',  // lit. g
+    'verboten_biometrie_rt',         // lit. h
+    'verboten_intimbilder',          // lit. ba (VO (EU) 2026/1744)
+    'verboten_csam'                  // lit. bb (VO (EU) 2026/1744)
+  ];
+  if (verboteneFelder.some(f => a[f] === 'ja')) {
+    return { class: 'verboten', label: 'Unzulässig', emoji: '🚫',
+      desc: 'Der Use Case fällt unter eine oder mehrere verbotene KI-Praktiken nach Art. 5 EU AI Act. Eine Implementierung ist nicht zulässig.' };
+  }
+  // High risk (Anhang III) — mit Filter Art. 6 Abs. 3
+  const hrFields = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'];
+  const hrActive = hrFields.some(f => a[f]);
+  if (hrActive) {
+    const ausnahmeGenutzt = ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]);
+    const profiling = a.art6_profiling === 'ja';
+    // Ausnahme greift nur, wenn mindestens ein Tatbestand UND kein Profiling
+    if (ausnahmeGenutzt && !profiling) {
+      // System fällt aus Hochrisiko raus, weiter mit Art. 50 Prüfung unten
+    } else {
+      return { class: 'hoch', label: 'Hochrisiko', emoji: '⚠️',
+        desc: 'Der Use Case fällt in einen Hochrisiko-Bereich nach Anhang III EU AI Act. Umfangreiche Konformitätspflichten gelten vor dem Inverkehrbringen.' };
+    }
+  }
+  // Limited risk (Art. 50 Transparenzpflichten)
+  // Interaktion: nur dann transparenz-pflichtig, wenn KI-Natur nicht offensichtlich ist
+  const interaktionPflicht = a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja';
+  // GenAI: immer Kennzeichnungspflicht (Art. 50 Abs. 2 für KI-Output, Abs. 4 für Deepfakes)
+  const genaiPflicht = a.transparenz_genai === 'ja';
+  if (interaktionPflicht || genaiPflicht) {
+    return { class: 'begrenzt', label: 'Begrenztes Risiko', emoji: '💬',
+      desc: 'Der Use Case unterliegt Transparenzpflichten nach Art. 50 EU AI Act. Nutzer:innen müssen über die KI-Interaktion oder die KI-Erzeugung von Inhalten informiert werden.' };
+  }
+  return { class: 'minimal', label: 'Minimales Risiko', emoji: '✅',
+    desc: 'Der Use Case fällt in die Kategorie minimales Risiko. Freiwillige Verhaltenskodizes werden empfohlen; keine spezifischen AI-Act-Pflichten.' };
+}
+
+function getNextSteps(risk, a) {
+  const base = [];
+  const hrFields = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'];
+  const hrActive = hrFields.some(f => a[f]);
+  const ausnahmeGenutzt = ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]);
+  const art6GreiftWirklich = hrActive && ausnahmeGenutzt && a.art6_profiling === 'nein';
+
+  if (risk.class === 'kein-ki') {
+    base.push('AI-VO-Pflichten greifen voraussichtlich nicht — Selbsteinschätzung dokumentieren, falls die Klassifizierung später hinterfragt wird.');
+    if (a.daten_personenbezogen === 'ja') base.push('DSGVO bleibt: Verzeichnis von Verarbeitungstätigkeiten (Art. 30), DSFA-Schwellenwertprüfung (Art. 35) bei Risiko für Betroffene.');
+    if (a.gov_betriebsrat === 'ja' || a.gov_betriebsrat === 'unklar') base.push('§ 87 BetrVG bleibt unabhängig vom AI Act bei Mitarbeiterüberwachung.');
+    base.push('Bei Modell-Wechsel oder Erweiterung um lernende Komponenten: Klassifikation neu prüfen.');
+    return base;
+  }
+  if (risk.class === 'verboten') {
+    base.push('Use Case in dieser Form nicht weiterverfolgen — Rechtsverstöße möglich.');
+    base.push('Legal und Datenschutzbeauftragte umgehend informieren.');
+    base.push('Alternativ-Ansatz ohne die verbotene KI-Praktik prüfen.');
+    return base;
+  }
+  // Rollenspezifische Hinweise
+  const rollen = a.aivo_rolle || [];
+  if (rollen.includes('anbieter')) {
+    base.push('Als Anbieter: Pflichten nach Art. 16 ff. (Konformitätsbewertung, technische Dokumentation, Qualitätsmanagementsystem, CE-Kennzeichnung bei Hochrisiko).');
+  }
+  if (rollen.includes('betreiber') && risk.class === 'hoch') {
+    base.push('Als Betreiber eines Hochrisiko-Systems: Pflichten nach Art. 26 (zweckkonforme Nutzung, Eingabedaten-Qualität, Human Oversight, Logging-Aufbewahrung, Information der Beschäftigten).');
+  }
+  if (rollen.includes('importeur')) {
+    base.push('Als Importeur: Konformitätsprüfung vor Inverkehrbringen (Art. 23), CE-Kennzeichnung und Anbieter-Dokumentation auf Vollständigkeit prüfen.');
+  }
+  if (rollen.includes('haendler')) {
+    base.push('Als Händler: Sorgfaltspflicht nach Art. 24 (CE-Kennzeichnung, Anbieter-Identifikation, Konformität sichten).');
+  }
+  if (risk.class === 'hoch') {
+    base.push('Konformitätsbewertung nach Art. 43 EU AI Act einleiten (Anhang-III-System).');
+    base.push('Technische Dokumentation nach Anhang IV erstellen.');
+    base.push('Risikomanagement-System nach Art. 9 aufsetzen.');
+    base.push('Daten-Governance und Bias-Assessment durchführen (Art. 10).');
+    base.push('Human Oversight-Mechanismus definieren (Art. 14).');
+    base.push('Registrierung in der EU-Datenbank vorbereiten (Art. 49, Art. 71).');
+    if (a.daten_personenbezogen === 'ja') base.push('DSFA (DSGVO Art. 35) parallel durchführen.');
+    if (a.gov_betriebsrat === 'ja' || a.gov_betriebsrat === 'unklar') base.push('Betriebsrat frühzeitig einbinden (§ 87 Abs. 1 Nr. 6 BetrVG prüfen).');
+  }
+  // Art. 6 Abs. 3 Ausnahme greift: war Anhang III, fällt aber raus
+  if (art6GreiftWirklich) {
+    base.push('Selbsteinschätzung nach Art. 6 Abs. 3 schriftlich dokumentieren (Art. 6 Abs. 4) — Begründung, warum kein erhebliches Risiko für Gesundheit, Sicherheit oder Grundrechte besteht.');
+    base.push('System in der EU-Datenbank registrieren (Art. 49 Abs. 2) — auch ausgenommene Anhang-III-Systeme sind registrierungspflichtig.');
+    base.push('Marktaufsichtsbehörde kann die Einschätzung jederzeit überprüfen — Selbsteinschätzung muss belastbar sein.');
+    base.push('Im Zweifel: Ausnahme-Anwendung durch Legal prüfen lassen, bevor das System in Betrieb geht.');
+  }
+  if (risk.class === 'begrenzt') {
+    const ag = a.automatisierungsgrad;
+    // Interaktion mit Personen (Art. 50 Abs. 1)
+    if (a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja') {
+      if (ag === 'vollautomatisch' || ag === 'unklar' || !ag) {
+        base.push('Transparenzpflicht nach Art. 50 Abs. 1 umsetzen: Empfänger:innen klar kennzeichnen, dass sie mit einem KI-System interagieren — z. B. durch Hinweis vor Beginn der Konversation.');
+      } else {
+        base.push('Automatisierungsgrad unterstützend: Die externe Kennzeichnungspflicht nach Art. 50 Abs. 1 entfällt voraussichtlich, da der Mensch die Ausgabe prüft. Interne KI-Nutzungsrichtlinie dokumentieren und Mitarbeitende informieren.');
+      }
+    } else if (a.transparenz_interaktion === 'ja' && a.art50_offensichtlich === 'ja') {
+      base.push('KI-Interaktion ist als offensichtlich eingestuft (Art. 50 Abs. 1 Satz 2): Diese Einstufung dokumentieren — Marktaufsicht kann die Bewertung prüfen. Bei Zweifeln im Gestaltungsprozess explizit kennzeichnen.');
+    }
+    // GenAI-Output (Art. 50 Abs. 2)
+    if (a.transparenz_genai === 'ja') {
+      base.push('KI-generierte Inhalte technisch maschinenlesbar als künstlich kennzeichnen (Art. 50 Abs. 2) — Provider-Pflicht. Bei Eigenentwicklung: Kennzeichnung im Output verankern, bei Drittanbieter: Kennzeichnung des Anbieters dokumentieren.');
+    }
+    // Deepfakes (Art. 50 Abs. 4)
+    if (a.art50_deepfake === 'ja') {
+      base.push('Deepfake-Kennzeichnung nach Art. 50 Abs. 4: synthetische Inhalte sichtbar als künstlich oder manipuliert markieren. Ausnahme nur bei offensichtlich künstlerischen, satirischen oder fiktionalen Werken — dann angemessene Offenlegung, die das Werk nicht beeinträchtigt.');
+    }
+    // Biometrie / Emotion (Art. 50 Abs. 3) — nur wenn nicht schon durch Art. 5 verboten
+    if ((a.daten_arten||[]).includes('biometrie') && a.verboten_emotion !== 'ja' && a.verboten_bio_kategorisierung !== 'ja') {
+      base.push('Hinweis nach Art. 50 Abs. 3 prüfen: Werden Personen biometrisch kategorisiert oder Emotionen erkannt (außerhalb der Verbote nach Art. 5), müssen sie informiert werden.');
+    }
+    if (a.daten_personenbezogen === 'ja') base.push('DSFA-Schwellenwertprüfung nach DSGVO Art. 35 durchführen.');
+  }
+  if (risk.class === 'minimal') {
+    base.push('Freiwilligen Verhaltenskodex gemäß EU AI Act Art. 95 prüfen.');
+    if (a.daten_personenbezogen === 'ja') base.push('DSFA-Schwellenwertprüfung nach DSGVO Art. 35 durchführen.');
+  }
+  // Diskriminierungsrisiko — quer zu allen Risikoklassen außer „verboten"
+  const biasRisiko = (a.bias_direkt === 'ja' || a.bias_indirekt === 'ja' || a.bias_indirekt === 'unklar');
+  if (biasRisiko && a.bias_pruefung !== 'ja' && risk.class !== 'verboten') {
+    base.push('Bias-Prüfung in den Entwicklungs- oder Beschaffungsprozess aufnehmen — bei Hochrisiko verpflichtend nach Art. 10 EU AI Act, unabhängig davon greift das AGG bei Beschäftigung und Geschäftsleben mit der Allgemeinheit.');
+    if (a.bias_indirekt === 'unklar') {
+      base.push('Proxy-Diskriminierung prüfen: welche Schutzmerkmale sind aus Namen, Adressen, Kaufverhalten oder anderen Datenpunkten ableitbar?');
+    }
+  }
+  // DSGVO Art. 22 — automatisierte Einzelentscheidung
+  // Trigger: vollautomatisch + personenbezogene Daten + Wirkung auf Personen (extern oder Beschäftigte)
+  const wirkungAufPersonen = (a.nutzer||[]).some(n => ['extern_kunden','extern_dritte','behoerden'].includes(n))
+                              || a.hr_beschaeftigung || a.hr_services || a.hr_bildung;
+  if (a.automatisierungsgrad === 'vollautomatisch' && a.daten_personenbezogen === 'ja' && wirkungAufPersonen && risk.class !== 'verboten') {
+    base.push('DSGVO Art. 22 prüfen: Vollautomatische Entscheidung mit personenbezogenen Daten und Wirkung auf Personen — möglicherweise „solely automated decision" mit Rechtswirkung. Pflicht: menschliche Intervention ermöglichen, Anfechtungsrecht, Standpunkt darlegen, Information vor der Entscheidung. Rechtsgrundlage nach Art. 22 Abs. 2 (Vertrag, Rechtsvorschrift, ausdrückliche Einwilligung) klären.');
+  }
+  // GPAI-spezifische Hinweise — gelten quer zu allen Risikoklassen außer „verboten"
+  if (a.gpai_genutzt === 'ja') {
+    if (a.gpai_rolle === 'deployer') {
+      base.push('GPAI-Deployer: AGB und Nutzungsbedingungen des Modell-Anbieters prüfen, insbesondere zu Datenflüssen, Zweckbindung und EU-Datenresidenz.');
+    }
+    if (a.gpai_rolle === 'modifizierer') {
+      base.push('GPAI-Modifizierung: Schwelle „substantielle Modifikation" nach Art. 25 juristisch klären — bei Provider-Wechsel greifen Pflichten Art. 53 ff. (Dokumentation, Trainingsdaten-Zusammenfassung, Urheberrechts-Compliance).');
+    }
+    if (a.gpai_rolle === 'provider') {
+      base.push('GPAI-Provider: Pflichten nach Art. 53 erfüllen (technische Dokumentation, Trainingsdaten-Zusammenfassung nach AI-Office-Vorlage, Urheberrechts-Compliance). Bei systemischem Risiko (10²⁵ FLOPs, Art. 51) zusätzlich Art. 55. Den GPAI Code of Practice (10.07.2025) als anerkannten Konformitätspfad prüfen.');
+    }
+  }
+  if (a.gpai_genutzt === 'unklar') {
+    base.push('GPAI-Klärung: Identifizieren, welches Foundation Model wo eingesetzt wird, und in welcher Rolle (reiner Nutzer, Anpassung, eigenes Training). Ohne diese Klärung bleibt die regulatorische Verantwortlichkeit offen.');
+  }
+  // Universal next steps
+  if (!a.gov_sponsor || a.gov_sponsor === 'nein') base.push('Executive Sponsor benennen — ohne benannte Verantwortung im Management bleiben Ressourcenfragen und Eskalationen offen.');
+  if (!a.gov_legal || a.gov_legal === 'nein') base.push('Legal und Datenschutz einbinden, bevor Daten beschafft werden.');
+  base.push('Use-Case-Zieldefinition mit messbaren KPIs schärfen (SMART-Kriterien).');
+  base.push('PoC-Scope eng definieren, Zeitrahmen max. 4–8 Wochen.');
+  return base;
+}
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+function render() {
+  saveState();
+  renderNav();
+  renderSummary();
+  const s = state.step;
+  if (s === 0) renderWertbeitrag();
+  else if (s === 1) renderProblem();
+  else if (s === 2) renderDaten();
+  else if (s === 3) renderVerboten();
+  else if (s === 4) renderHochrisiko();
+  else if (s === 5) renderGovernance();
+  else if (s === 6) renderErgebnis();
+}
+
+function renderNav() {
+  const nav = document.getElementById('stepNav');
+  nav.innerHTML = STEPS.map((s, i) => {
+    let cls = '';
+    if (i < state.step) cls = 'done';
+    else if (i === state.step) cls = 'active';
+    if (i === 2 && state.blocked) cls = 'blocked';
+    const dot = cls === 'done' ? '✓' : (cls === 'blocked' ? '✕' : i + 1);
+    return `<li class="${cls}">
+      <div class="step-dot">${dot}</div>
+      <div class="step-label"><strong>${s.label}</strong><span>${s.sub}</span></div>
+    </li>`;
+  }).join('');
+}
+
+function renderSummary() {
+  const a = state.answers;
+  const box = document.getElementById('summaryBox');
+  const items = [];
+  if (a.problem_text) items.push({ l: 'Problem', v: a.problem_text.length > 60 ? a.problem_text.slice(0, 60) + '…' : a.problem_text });
+  if (a.bereich) items.push({ l: 'Bereich', v: a.bereich });
+  if (a.daten_personenbezogen) items.push({ l: 'Personenbezogene Daten', v: a.daten_personenbezogen });
+  if (state.riskClass) {
+    const r = state.riskClass;
+    items.push({ l: 'Risikoklasse', v: `${r.emoji} ${r.label}` });
+  }
+  if (items.length === 0) {
+    box.innerHTML = `<h3>Zusammenfassung</h3><p style="font-size:13px;color:var(--slate-500)">Erscheint während der Bewertung.</p>`;
+    return;
+  }
+  box.innerHTML = `<h3>Zusammenfassung</h3>` + items.map(i => `
+    <div class="summary-item"><div class="si-label">${i.l}</div><div class="si-value">${i.v}</div></div>`).join('');
+}
+
+function card(stepNum, title, sub, html, btnLabel, onNext, backBtn = true) {
+  const mc = document.getElementById('mainCard');
+  mc.innerHTML = `
+    <div class="card-step">Schritt ${stepNum} von ${STEPS.length} · ${STEPS[stepNum-1].label}</div>
+    <h2>${title}</h2>
+    <p class="card-sub">${sub}</p>
+    ${html}
+    <div class="btn-row">
+      ${backBtn && stepNum > 1 ? `<button class="btn btn-secondary" onclick="goBack()">← Zurück</button>` : ''}
+      <button class="btn btn-primary" id="nextBtn" onclick="${onNext}">${btnLabel}</button>
+    </div>`;
+  enhanceYnButtons();
+}
+
+// Tastaturzugang für die div-basierten Ja/Nein-Flächen
+function enhanceYnButtons() {
+  document.querySelectorAll('.yn-btn').forEach(b => {
+    b.setAttribute('role', 'button');
+    b.setAttribute('tabindex', '0');
+    b.setAttribute('aria-pressed', b.classList.contains('selected') ? 'true' : 'false');
+  });
+}
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('yn-btn')) {
+    e.preventDefault();
+    e.target.click();
+  }
+});
+
+function goBack() {
+  if (state.step > 0) { state.step--; state.blocked = false; render(); }
+}
+
+// ─────────────────────────────────────────────
+// STEP 1: WERTBEITRAG (Vorprüfung)
+// ─────────────────────────────────────────────
+function renderWertbeitrag() {
+  const a = state.answers;
+  const reifegrade = [
+    ['standard',     'Standardtool',         'Fertige Lösung von der Stange (z. B. Microsoft Copilot, ChatGPT Enterprise, branchenspezifische SaaS)'],
+    ['anpassung',    'Anpassung / Customizing', 'Standardtool mit Konfiguration, Prompt-Engineering, RAG oder leichter Integration in bestehende Systeme'],
+    ['eigenbau',     'Eigenentwicklung',     'Maßgefertigte Lösung mit Fine-tuning, eigenem Modelltraining oder substanzieller Eigenentwicklung'],
+    ['unklar',       'Noch unklar',          'Reifegrad ist Teil der Vorprüfung'],
+  ];
+  card(1, 'Lohnt sich der Use Case?', 'Drei Vorprüfungs-Fragen vor der regulatorischen Klassifizierung. Wenn hier kein klares Bild entsteht, lohnt es sich, die Klassifizierung zu verschieben und den Use Case zu schärfen.',
+  `<div class="field">
+    <label>1. Welcher konkrete Wertbeitrag entsteht?</label>
+    <div class="hint">Konkret und messbar: „Welches Problem löst die KI, das heute Geld, Zeit oder Qualität kostet?" Beispiele: „2 Stunden Bearbeitungszeit pro Vorgang sparen, bei 1.200 Vorgängen pro Monat" — nicht: „Effizienz steigern".</div>
+    <textarea id="f_wertbeitrag" rows="3" placeholder="Konkret: was wird besser, um wie viel, für wen?">${a.wertbeitrag || ''}</textarea>
+  </div>
+  <div class="field">
+    <label>2. Reifegrad der Lösung</label>
+    <div class="hint">Bestimmt Regulierungs-Last, Kosten und Time-to-Value. Standardtools haben den schnellsten Weg, Eigenbau die meiste Verantwortung.</div>
+    <div class="check-group">
+      ${reifegrade.map(([v,l,sub]) => `
+      <label class="check-option ${a.reifegrad === v ? 'checked' : ''}">
+        <input type="radio" name="reifegrad" ${a.reifegrad === v ? 'checked' : ''} onchange="state.answers.reifegrad='${v}';render()">
+        <div class="opt-text"><strong>${l}</strong><span>${sub}</span></div>
+      </label>`).join('')}
+    </div>
+  </div>
+  <div class="field">
+    <label>3. Welche Alternative wurde geprüft?</label>
+    <div class="hint">Welche nicht-KI-Lösung käme infrage — Prozessverbesserung, Schulung, Standardsoftware, regelbasierte Automation? Warum reicht sie nicht? Wenn keine Alternative geprüft wurde: zurück zur Vorprüfung.</div>
+    <textarea id="f_alternative" rows="3" placeholder="Geprüfte Alternative: ...; Warum reicht sie nicht: ...">${a.alternative || ''}</textarea>
+  </div>
+  <div class="field" style="border-top:1px solid var(--slate-100);padding-top:18px;margin-top:8px">
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500">
+      <input type="checkbox" id="f_persist" ${state.persistEnabled ? 'checked' : ''} onchange="this.checked ? enablePersist() : disablePersist()">
+      <span>Eingaben in diesem Browser zwischenspeichern</span>
+    </label>
+    <div class="hint" style="margin-top:6px">Daten bleiben lokal im Browser-Storage und werden nicht übertragen. Bei erneutem Öffnen kannst du die Bewertung fortsetzen. Über die Schaltfläche „Neu beginnen" auf der Ergebnisseite wieder löschbar.</div>
+  </div>`,
+  'Weiter', 'saveWertbeitrag()', false);
+}
+
+function saveWertbeitrag() {
+  const wb = document.getElementById('f_wertbeitrag').value.trim();
+  const alt = document.getElementById('f_alternative').value.trim();
+  if (!wb) { alert('Bitte Wertbeitrag konkret beschreiben — wenn unklar, vor der KI-Bewertung schärfen.'); return; }
+  if (!state.answers.reifegrad) { alert('Bitte Reifegrad der Lösung auswählen.'); return; }
+  if (!alt) { alert('Bitte geprüfte Alternative beschreiben — wenn keine geprüft, vor der KI-Bewertung nachholen.'); return; }
+  state.answers.wertbeitrag = wb;
+  state.answers.alternative = alt;
+  state.step = 1;
+  render();
+}
+
+// ─────────────────────────────────────────────
+// STEP 2: PROBLEM
+// ─────────────────────────────────────────────
+function renderProblem() {
+  const a = state.answers;
+  const bereiche = ['HR / Personal','Produktion / Fertigung','Qualitätsmanagement','Kundenservice','Finanzen / Controlling','IT / Digitalisierung','Marketing / Vertrieb','Logistik / Supply Chain','Forschung & Entwicklung','Regulatory Affairs','Sonstiges'];
+  const nutzer = Object.entries(NUTZER_LABELS).map(([v, l]) => ({ v, l }));
+  const rollen = Object.entries(ROLLE_LABELS).map(([v, l]) => ({ v, l, h: ROLLE_HINTS[v] }));
+  card(2, 'Was soll die KI lösen?', 'Erst zwei Sanity-Checks: Ist das überhaupt KI nach AI-VO? In welcher Rolle sind Sie? Dann das Geschäftsproblem.',
+  `<div class="field">
+    <label>Ist das System ein KI-System nach Art. 3 Abs. 1 EU AI Act?</label>
+    <details class="hint-detail">
+      <summary>Drei Kriterien: leitet das System Outputs aus Eingaben ab, hat Autonomie, erzeugt Vorhersagen/Empfehlungen/Entscheidungen/Inhalte?</summary>
+      <div class="detail-body">Art. 3 Abs. 1 EU AI Act definiert ein KI-System als „maschinengestütztes System, das mit unterschiedlichem Grad an Autonomie betrieben wird, nach Inbetriebnahme anpassungsfähig sein kann und aus Eingaben ableitet, wie Ausgaben — Vorhersagen, Inhalte, Empfehlungen, Entscheidungen — erzeugt werden, die physische oder virtuelle Umgebungen beeinflussen können". Klassische Software mit fest verdrahteten Regeln, Excel-Formeln oder reine Datenbankabfragen sind <strong>kein</strong> KI-System nach AI-VO.</div>
+    </details>
+    <div class="yn-group">
+      ${[
+        ['ja','Ja, eindeutig','Machine Learning, Deep Learning, Foundation Model, generative KI'],
+        ['wahrscheinlich','Wahrscheinlich ja','Statistik mit Lerneffekt, Optimierungsverfahren, lernende Algorithmen'],
+        ['nein','Wahrscheinlich nein','Regelbasiert, klassische Software, Skripte, Templates, Excel']
+      ].map(([v,l,sub]) => `<div class="yn-btn ${a.is_ai_system === v ? 'selected' : ''}" onclick="setYN('is_ai_system','${v}',this)">${l}<br><small style="font-weight:400;opacity:.7">${sub}</small></div>`).join('')}
+    </div>
+    ${a.is_ai_system === 'nein' ? `<div class="alert alert-teal" style="margin-top:10px"><strong>Kein KI-System nach AI-VO — wahrscheinlich.</strong> Die EU-KI-Verordnung greift voraussichtlich nicht. Andere Pflichten bleiben: DSGVO bei personenbezogenen Daten, AGG bei Diskriminierungsrisiko, BetrVG bei Mitarbeiterbezug, ggf. Branchenrecht. Sie können die Bewertung trotzdem abschließen — die Klassifikation wird dann „Nicht-KI nach AI-VO" sein.</div>` : ''}
+  </div>
+  <div class="field">
+    <label>Welche Rolle nehmen Sie oder Ihre Organisation ein? (Mehrfachauswahl möglich)</label>
+    <div class="hint">Nicht zu verwechseln mit der GPAI-Rolle (Schritt 5). Hier geht es um die AI-VO-Rolle für das gesamte KI-System. Mehrfachauswahl ist häufig: bei Eigenentwicklung sind Sie Anbieter UND Betreiber.</div>
+    <div class="check-group">
+      ${rollen.map(r => `
+      <label class="check-option ${(a.aivo_rolle||[]).includes(r.v) ? 'checked' : ''}">
+        <input type="checkbox" name="aivo_rolle" value="${r.v}" ${(a.aivo_rolle||[]).includes(r.v) ? 'checked' : ''} onchange="toggleCheck('aivo_rolle', this.value, this.closest('.check-option'))">
+        <div class="opt-text"><strong>${r.l}</strong><span>${r.h}</span></div>
+      </label>`).join('')}
+    </div>
+  </div>
+  <div class="field">
+    <label>Geschäftsproblem (in einem Satz)</label>
+    <div class="hint">Konkret: z.B. "Reduktion der Bearbeitungszeit von Serviceanfragen um 30 %" — nicht: "KI im Kundenservice einsetzen".</div>
+    <textarea id="f_problem" rows="2" placeholder="Die KI soll…">${a.problem_text || ''}</textarea>
+  </div>
+  <div class="field">
+    <label>Welche Abteilung / welchen Bereich betrifft der Use Case?</label>
+    <select id="f_bereich">
+      <option value="">— bitte wählen —</option>
+      ${bereiche.map(b => `<option value="${b}" ${a.bereich === b ? 'selected' : ''}>${b}</option>`).join('')}
+    </select>
+  </div>
+  <div class="field">
+    <label>Wer nutzt die KI-Lösung? (Mehrfachauswahl möglich)</label>
+    <div class="check-group">
+      ${nutzer.map(n => `
+      <label class="check-option ${(a.nutzer||[]).includes(n.v) ? 'checked' : ''}">
+        <input type="checkbox" name="nutzer" value="${n.v}" ${(a.nutzer||[]).includes(n.v) ? 'checked' : ''} onchange="toggleCheck('nutzer', this.value, this.closest('.check-option'))">
+        <div class="opt-text"><strong>${n.l}</strong></div>
+      </label>`).join('')}
+    </div>
+  </div>
+  <div class="field">
+    <label>Messbares Erfolgsziel (KPI)</label>
+    <div class="hint">z.B. "Fehlerquote &lt; 5 %", "Durchlaufzeit -40 %", "Nutzerzufriedenheit ≥ 4/5"</div>
+    <input type="text" id="f_kpi" value="${a.kpi || ''}" placeholder="KPI / Erfolgskriterium">
+  </div>
+  <div class="field">
+    <label>Wie arbeitet die KI in diesem Use Case?</label>
+    <details class="hint-detail">
+      <summary>Entscheidet die KI selbst — oder schlägt sie nur vor und ein Mensch handelt?</summary>
+      <div class="detail-body">Entscheidend für die Reichweite der Transparenzpflichten nach Art. 50 EU AI Act und für DSGVO Art. 22 (automatisierte Einzelentscheidung). Vollautomatische Entscheidungen mit Rechtswirkung lösen zusätzliche Schutzpflichten aus: Recht auf menschliche Intervention, Anfechtung, Standpunkt darlegen.</div>
+    </details>
+    <div class="yn-group">
+      <div class="yn-btn ${a.automatisierungsgrad === 'vollautomatisch' ? 'selected' : ''}" onclick="selectAutoGrad('vollautomatisch',this)">Vollautomatisch<br><small style="font-weight:400;opacity:.8">KI entscheidet / sendet selbst</small></div>
+      <div class="yn-btn ${a.automatisierungsgrad === 'unterstuetzend' ? 'selected' : ''}" onclick="selectAutoGrad('unterstuetzend',this)">Unterstützend<br><small style="font-weight:400;opacity:.8">Mensch prüft und handelt</small></div>
+      <div class="yn-btn ${a.automatisierungsgrad === 'unklar' ? 'selected' : ''}" onclick="selectAutoGrad('unklar',this)">Noch unklar</div>
+    </div>
+  </div>`,
+  'Weiter', 'saveProblem()');
+}
+
+function toggleCheck(field, val, el) {
+  if (!state.answers[field]) state.answers[field] = [];
+  const idx = state.answers[field].indexOf(val);
+  if (idx === -1) { state.answers[field].push(val); el.classList.add('checked'); }
+  else { state.answers[field].splice(idx, 1); el.classList.remove('checked'); }
+  saveState();
+}
+
+function selectAutoGrad(val, el) {
+  state.answers.automatisierungsgrad = val;
+  el.closest('.yn-group').querySelectorAll('.yn-btn').forEach(b => { b.classList.remove('selected'); b.setAttribute('aria-pressed', 'false'); });
+  el.classList.add('selected');
+  el.setAttribute('aria-pressed', 'true');
+  saveState();
+}
+
+function saveProblem() {
+  const problem = document.getElementById('f_problem').value.trim();
+  const bereich = document.getElementById('f_bereich').value;
+  const kpi = document.getElementById('f_kpi').value.trim();
+  if (!state.answers.is_ai_system) { alert('Bitte beantworten, ob das System als KI-System nach AI-VO gilt.'); return; }
+  if (!(state.answers.aivo_rolle || []).length) { alert('Bitte mindestens eine AI-VO-Rolle auswählen — meist „Betreiber", bei Eigenentwicklung zusätzlich „Anbieter".'); return; }
+  if (!problem) { alert('Bitte das Geschäftsproblem beschreiben.'); return; }
+  if (!bereich) { alert('Bitte einen Bereich auswählen.'); return; }
+  state.answers.problem_text = problem;
+  state.answers.bereich = bereich;
+  state.answers.kpi = kpi;
+  // automatisierungsgrad already saved via selectAutoGrad()
+  state.step = 2;
+  render();
+}
+
+// ─────────────────────────────────────────────
+// STEP 2: DATEN
+// ─────────────────────────────────────────────
+function renderDaten() {
+  const a = state.answers;
+  const datenArtenHints = {
+    kontakt:       'Name, E-Mail, Adresse',
+    kommunikation: 'E-Mail-Texte, Chat-Verläufe, Anfragen, Beschwerden — häufig mehr als Kontaktdaten',
+    leistung:      'Klicks, Outputs, Bewertungen',
+    gesundheit:    'besonders schützenswert (Art. 9 DSGVO)',
+    biometrie:     'Gesicht, Fingerabdruck, Stimme — besonders schützenswert',
+    standort:      '',
+    finanzen:      'Gehalt, Kreditwürdigkeit, Ausgaben',
+    keine:         'rein technische oder anonymisierte Daten'
+  };
+  const datenArten = Object.entries(DATEN_ARTEN_LABELS).map(([v, l]) => ({ v, l, h: datenArtenHints[v] || '' }));
+  card(3, 'Welche Daten sind im Spiel?', 'Die Datengrundlage bestimmt regulatorische Pflichten — DSGVO, besondere Kategorien, und Anforderungen an Datenqualität.',
+  `<div class="field">
+    <label>Werden personenbezogene Daten verarbeitet?</label>
+    <div class="yn-group two">
+      ${['ja','nein'].map(v => `<div class="yn-btn ${a.daten_personenbezogen === v ? 'selected' : ''}" onclick="setYN('daten_personenbezogen','${v}',this)">${v === 'ja' ? 'Ja' : 'Nein'}</div>`).join('')}
+    </div>
+  </div>
+  <div class="field" id="datenArtenField" style="${a.daten_personenbezogen === 'nein' ? 'opacity:.4;pointer-events:none' : ''}">
+    <label>Wenn ja: Welche Art von Daten? (Mehrfachauswahl)</label>
+    <div class="hint">Auch Kommunikationsinhalte, E-Mail-Texte, Vertragsdaten, Anfragen und Beschwerden sind personenbezogene Daten — nicht nur Namen und Adressen.</div>
+    <div class="check-group">
+      ${datenArten.map(d => `
+      <label class="check-option ${(a.daten_arten||[]).includes(d.v) ? 'checked' : ''}">
+        <input type="checkbox" name="daten_arten" value="${d.v}" ${(a.daten_arten||[]).includes(d.v) ? 'checked' : ''} onchange="toggleCheck('daten_arten', this.value, this.closest('.check-option'))">
+        <div class="opt-text"><strong>${d.l}</strong>${d.h ? `<span>${d.h}</span>` : ''}</div>
+      </label>`).join('')}
+    </div>
+    ${(a.daten_arten||[]).some(x => ['gesundheit','biometrie'].includes(x)) ?
+      `<div class="alert alert-red" style="margin-top:12px"><strong>Besondere Kategorien (Art. 9 DSGVO):</strong> Gesundheits- und biometrische Daten unterliegen erhöhten Schutzpflichten. Eine DSFA (Art. 35 DSGVO) ist sehr wahrscheinlich erforderlich.</div>` : ''}
+  </div>
+  <div class="field">
+    <label>Sind die benötigten Daten vorhanden und zugänglich?</label>
+    <div class="yn-group">
+      ${[['ja','Ja, vollständig'],['teilweise','Teilweise'],['nein','Noch nicht']].map(([v,l]) =>
+        `<div class="yn-btn ${a.daten_verfuegbar === v ? 'selected' : ''}" onclick="setYN('daten_verfuegbar','${v}',this)">${l}</div>`).join('')}
+    </div>
+    ${a.daten_verfuegbar === 'nein' ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Datengrundlage prüfen.</strong> Wenn die benötigten Daten erst beschafft werden müssen, sind Aufwand und Verfügbarkeit zu klären, bevor ein PoC startet.</div>` : ''}
+  </div>
+  <div class="field" style="border-top:1px solid var(--slate-100);padding-top:18px">
+    <label>Diskriminierungsrisiko</label>
+    <div class="hint">Auch ohne Hochrisiko-Einstufung relevant — für Daten-Governance (Art. 10 EU AI Act bei Hochrisiko, AGG immer).</div>
+    <div class="field" style="margin-top:8px">
+      <label style="font-size:13px;font-weight:500">Werden Schutzmerkmale direkt verarbeitet?</label>
+      <div class="hint">Geschlecht, Alter, ethnische Herkunft, Religion, Behinderung, sexuelle Orientierung, Weltanschauung.</div>
+      <div class="yn-group two">
+        ${['ja','nein'].map(v => `<div class="yn-btn ${a.bias_direkt === v ? 'selected' : ''}" onclick="setYN('bias_direkt','${v}',this)">${v === 'ja' ? 'Ja' : 'Nein'}</div>`).join('')}
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label style="font-size:13px;font-weight:500">Sind Schutzmerkmale indirekt aus den Daten ableitbar?</label>
+      <details class="hint-detail">
+        <summary>Lassen sich Geschlecht, Herkunft oder Religion aus den Daten erschließen — auch wenn sie nicht direkt erfasst sind?</summary>
+        <div class="detail-body">„Proxy-Diskriminierung" ist häufiger als direkte. Beispiele: Geschlecht aus Vornamen, Herkunft aus Nachnamen, sozio-ökonomischer Status aus Postleitzahl, Religion aus Kaufverhalten oder Vereinszugehörigkeit, Alter aus Jobwechselhäufigkeit. Wenn solche Korrelationen plausibel sind, sollte das Modell darauf geprüft werden.</div>
+      </details>
+      <div class="yn-group">
+        ${[['ja','Ja, wahrscheinlich'],['unklar','Unklar / nicht geprüft'],['nein','Nein']].map(([v,l]) =>
+          `<div class="yn-btn ${a.bias_indirekt === v ? 'selected' : ''}" onclick="setYN('bias_indirekt','${v}',this)">${l}</div>`).join('')}
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label style="font-size:13px;font-weight:500">Ist eine Bias-Prüfung im Entwicklungs- oder Beschaffungsprozess vorgesehen?</label>
+      <div class="hint">Z. B. Fairness-Metriken auf Trainings- und Testdaten, Disparate-Impact-Analyse, Audits durch externe Stelle, Beschwerdekanal.</div>
+      <div class="yn-group">
+        ${[['ja','Ja, geplant oder umgesetzt'],['geplant','In Klärung'],['nein','Nein']].map(([v,l]) =>
+          `<div class="yn-btn ${a.bias_pruefung === v ? 'selected' : ''}" onclick="setYN('bias_pruefung','${v}',this)">${l}</div>`).join('')}
+      </div>
+    </div>
+    ${(a.bias_direkt === 'ja' || a.bias_indirekt === 'ja' || a.bias_indirekt === 'unklar') && a.bias_pruefung !== 'ja' ? `
+    <div class="alert alert-amber" style="margin-top:12px"><strong>Diskriminierungsrisiko sichtbar, Prüfung offen:</strong> Eine Bias-Prüfung sollte in Entwicklung oder Beschaffung verankert werden. Bei Hochrisiko-Einstufung verpflichtend nach Art. 10 EU AI Act (Daten-Governance, repräsentative Daten, Bias-Mitigation). Unabhängig vom AI Act greift das AGG bei Beschäftigung und Geschäftsleben mit der Allgemeinheit.</div>` : ''}
+  </div>`,
+  'Weiter', 'saveDaten()');
+}
+
+function setYN(field, val, el) {
+  state.answers[field] = val;
+  el.closest('.yn-group').querySelectorAll('.yn-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  render();
+  // Fokus nach dem Re-Render zurückholen, sonst verlieren Tastatur-Nutzer:innen die Position
+  const btns = document.querySelectorAll('.yn-btn');
+  for (const b of btns) {
+    if ((b.getAttribute('onclick') || '').includes(`'${field}','${val}'`)) { b.focus(); break; }
+  }
+}
+
+function saveDaten() {
+  if (!state.answers.daten_personenbezogen) { alert('Bitte Frage zu personenbezogenen Daten beantworten.'); return; }
+  if (!state.answers.daten_verfuegbar) { alert('Bitte Frage zur Datenverfügbarkeit beantworten.'); return; }
+  state.step = 3;
+  render();
+}
+
+// ─────────────────────────────────────────────
+// STEP 3: VERBOTSPRÜFUNG (Art. 5)
+// ─────────────────────────────────────────────
+function renderVerboten() {
+  const a = state.answers;
+  const verbotene = [
+    { key: 'verboten_manipulation', l: 'Unterschwellige oder manipulative Techniken (lit. a)', h: 'Das System beeinflusst Verhalten durch Techniken, die der Person nicht bewusst sind oder ihre Entscheidungsfähigkeit erheblich beeinträchtigen, und verursacht dadurch Schaden.' },
+    { key: 'verboten_schwachstellen', l: 'Ausnutzen von Schwachstellen (lit. b)', h: 'Das System nutzt Schutzbedürftigkeit aufgrund von Alter, Behinderung oder sozialer/wirtschaftlicher Lage aus und verursacht dadurch Schaden.' },
+    { key: 'verboten_social_scoring', l: 'Social Scoring (lit. c)', h: 'Bewertung natürlicher Personen über einen Zeitraum auf Basis sozialen Verhaltens, die zu nachteiliger Behandlung in unzusammenhängenden Kontexten oder unverhältnismäßiger Schlechterstellung führt. Gilt für staatliche und private Akteure.' },
+    { key: 'verboten_predictive_policing', l: 'Predictive Policing auf Profilbasis (lit. d)', h: 'Risikoabschätzung der Wahrscheinlichkeit, dass eine Person eine Straftat begeht, ausschließlich auf Basis von Profiling oder Persönlichkeitsmerkmalen. Ausnahme: Unterstützung menschlicher Bewertungen, die auf objektiven, überprüfbaren Tatsachen beruhen.' },
+    { key: 'verboten_scraping', l: 'Untargeted Scraping für Gesichtserkennung (lit. e)', h: 'Aufbau oder Erweiterung von Gesichtserkennungs-Datenbanken durch ungezieltes Auslesen von Gesichtsbildern aus dem Internet oder von Videoüberwachungsmaterial.' },
+    { key: 'verboten_emotion', l: 'Emotionserkennung am Arbeitsplatz oder in Bildung (lit. f)', h: 'Erkennung von Emotionen bei Beschäftigten oder Lernenden. Ausnahmen nur aus medizinischen oder Sicherheitsgründen.' },
+    { key: 'verboten_bio_kategorisierung', l: 'Biometrische Kategorisierung sensibler Merkmale (lit. g)', h: 'Kategorisierung von Personen anhand biometrischer Daten, um auf rassische oder ethnische Herkunft, politische Überzeugung, Gewerkschaftszugehörigkeit, Religion, Sexualleben oder sexuelle Orientierung zu schließen. Ausnahme: rechtmäßig erworbene Datensätze im Strafverfolgungskontext.' },
+    { key: 'verboten_biometrie_rt', l: 'Biometrische Echtzeit-Fernidentifikation in öffentlichen Räumen (lit. h)', h: 'Zur Strafverfolgung — nur sehr eng begrenzte Ausnahmen zulässig (Suche nach Opfern bestimmter Straftaten, Abwehr konkreter Bedrohungen, Lokalisierung Tatverdächtiger schwerer Straftaten).' },
+    { key: 'verboten_intimbilder', l: 'Nicht-einvernehmliche Intimdarstellungen (lit. ba — neu seit 27.07.2026)', h: 'Erzeugung oder Manipulation realistischer Bilder, Videos oder Audioinhalte, die Intimbereiche einer identifizierbaren Person zeigen, ohne deren Einwilligung. Eingefügt durch VO (EU) 2026/1744. Anbieter sind erfasst, wenn das die Zweckbestimmung ist oder vernünftigerweise vorhersehbar und keine angemessenen technischen Schutzmaßnahmen bestehen; Betreiber bei entsprechender Nutzung.' },
+    { key: 'verboten_csam', l: 'Erzeugung von Darstellungen sexuellen Kindesmissbrauchs (lit. bb — neu seit 27.07.2026)', h: 'KI-Systeme zur Erzeugung oder Manipulation von Material im Sinne der Richtlinie 2011/93/EU (CSAM). Eingefügt durch VO (EU) 2026/1744 — Inverkehrbringen und Nutzung sind verboten.' },
+  ];
+  const blocked = verbotene.some(v => a[v.key] === 'ja');
+
+  card(4, 'Verbotene Praktiken prüfen', 'Art. 5 EU AI Act definiert KI-Anwendungen, die grundsätzlich unzulässig sind. Diese Prüfung hat Vorrang vor allen anderen Bewertungen.',
+  verbotene.map(v => `
+    <div class="field">
+      <label>${v.l}</label>
+      <div class="hint">${v.h}</div>
+      <div class="yn-group two">
+        <div class="yn-btn danger ${a[v.key] === 'ja' ? 'selected' : ''}" onclick="setYN('${v.key}','ja',this)">Ja — trifft zu</div>
+        <div class="yn-btn ${a[v.key] === 'nein' ? 'selected' : ''}" onclick="setYN('${v.key}','nein',this)">Nein — trifft nicht zu</div>
+      </div>
+    </div>`).join('') +
+  (blocked ? `<div class="alert alert-red"><strong>🚫 Verbotene Praktik identifiziert.</strong> Mindestens eine der obigen Praktiken trifft auf diesen Use Case zu. Eine Implementierung ist nach Art. 5 EU AI Act nicht zulässig. Bitte Legal und Datenschutz informieren und den Use Case in dieser Form nicht weiterverfolgen.</div>` : '')
+  , 'Weiter', 'saveVerboten()');
+}
+
+function saveVerboten() {
+  const verbotene = [
+    'verboten_manipulation','verboten_schwachstellen','verboten_social_scoring',
+    'verboten_predictive_policing','verboten_scraping','verboten_emotion',
+    'verboten_bio_kategorisierung','verboten_biometrie_rt',
+    'verboten_intimbilder','verboten_csam'
+  ];
+  const unanswered = verbotene.filter(k => !state.answers[k]);
+  if (unanswered.length > 0) { alert('Bitte alle zehn Fragen beantworten.'); return; }
+  const blocked = verbotene.some(k => state.answers[k] === 'ja');
+  state.blocked = blocked;
+  if (blocked) {
+    state.riskClass = { class: 'verboten', label: 'Unzulässig', emoji: '🚫', desc: 'Der Use Case fällt unter eine oder mehrere verbotene KI-Praktiken nach Art. 5 EU AI Act.' };
+    state.step = 6;
+  } else {
+    state.step = 4;
+  }
+  render();
+}
+
+// ─────────────────────────────────────────────
+// STEP 4: HOCHRISIKO (Anhang III)
+// ─────────────────────────────────────────────
+function renderHochrisiko() {
+  const a = state.answers;
+  const kategorien = [
+    { key: 'hr_biometrie',       l: '1 · Biometrie',                          h: 'a) Fern-Identifikation, b) biometrische Kategorisierung nach sensiblen oder geschützten Merkmalen, c) Emotionserkennung (außerhalb der Verbote nach Art. 5).' },
+    { key: 'hr_infrastruktur',   l: '2 · Kritische Infrastruktur',            h: 'Sicherheitskomponenten in Verkehr, Wasser-, Gas-, Wärme-, Stromversorgung — nicht jedes IT-System in einer Versorgungsfirma.' },
+    { key: 'hr_bildung',         l: '3 · Bildung und Berufsausbildung',       h: 'Zulassungsentscheidungen, Bewertung von Lernergebnissen, Niveau-Einstufung, Erkennung verbotenen Verhaltens in Prüfungen.' },
+    { key: 'hr_beschaeftigung',  l: '4 · Beschäftigung und Personalmanagement', h: 'Rekrutierung (Anzeigen, Screening, Auswahl), Beförderung, Kündigung, Aufgabenzuweisung, Leistungs- oder Verhaltensüberwachung. Schwelle: Entscheidung wird wesentlich beeinflusst.' },
+    { key: 'hr_services',        l: '5 · Wesentliche Dienste',                h: 'a) Anspruch auf öffentliche Leistungen, b) Kreditwürdigkeit/Kreditscoring (außer Betrugserkennung), c) Lebens- und Krankenversicherung (Risiko-/Preiseinstufung), d) Triage in Notrufzentralen.' },
+    { key: 'hr_strafverfolgung', l: '6 · Strafverfolgung',                    h: 'Risikoeinschätzungen zu Opfern oder Straftaten, Lügendetektoren, Beweisauswertung, Profiling im Ermittlungskontext.' },
+    { key: 'hr_migration',       l: '7 · Migration, Asyl, Grenzkontrolle',    h: 'Lügendetektoren, Risiko-Einstufungen, Bearbeitung von Asyl-, Visa- oder Aufenthaltsanträgen, Identifikation an Grenzen.' },
+    { key: 'hr_justiz',          l: '8 · Rechtspflege und demokratische Prozesse', h: 'Entscheidungsunterstützung in Gerichts- oder Schlichtungsverfahren; Beeinflussung von Wahlen oder Wahlverhalten (außer reines Backoffice).' },
+  ];
+  const hrActive = kategorien.some(k => a[k.key]);
+  const ausnahmen = [
+    { key: 'art6_a', l: 'a) Eng begrenzte verfahrensbezogene Aufgabe', h: 'Schmale, technisch-prozedurale Funktion ohne eigenständige inhaltliche Bewertung. Beispiele: Datenkonvertierung, Dubletten-Erkennung, Ticket-Routing, Dokumentenklassifikation zur Ablage. Nicht: Scoring oder Ranking, deren Output Entscheidungen prägt.' },
+    { key: 'art6_b', l: 'b) Verbesserung einer abgeschlossenen menschlichen Tätigkeit', h: 'Das System verbessert das Ergebnis einer Tätigkeit, die ein Mensch zuvor abgeschlossen hat. Beispiel: Stilkorrektur eines fertig geschriebenen Berichts, Lesbarkeits-Optimierung. Die ursprüngliche menschliche Entscheidung steht.' },
+    { key: 'art6_c', l: 'c) Erkennen von Entscheidungsmustern ohne Ersatz menschlicher Bewertung', h: 'Erkennung von Mustern oder Abweichungen — ohne dass eine bereits abgeschlossene menschliche Bewertung ohne ordentliche Überprüfung ersetzt oder beeinflusst wird. „Rubber-stamping" einer KI-Empfehlung erfüllt diesen Tatbestand nicht.' },
+    { key: 'art6_d', l: 'd) Vorbereitende Aufgabe', h: 'Zuarbeit für eine spätere, eigenständig verantwortete menschliche Entscheidung im Anhang-III-Kontext. Beispiele: Volltextsuche, Übersetzung, Indexierung, Aktenzusammenstellung, Vorpriorisierung der Bearbeitungsreihenfolge — solange keine Bewilligungs-/Ablehnungs-Kriterien automatisiert gesetzt werden.' },
+  ];
+  const ausnahmeGenutzt = ausnahmen.some(x => a[x.key]);
+  card(5, 'Hochrisiko-Klassifizierung', 'Anhang III EU AI Act listet acht Bereiche, in denen KI-Systeme als hochriskant gelten und strenge Konformitätspflichten auslösen. Art. 6 Abs. 3 enthält Ausnahmen für eng begrenzte Aufgaben.',
+  `<div class="field">
+    <label>Fällt der Use Case in einen oder mehrere dieser Bereiche?</label>
+    <div class="check-group">
+      ${kategorien.map(k => `
+      <label class="check-option ${a[k.key] ? 'checked' : ''}">
+        <input type="checkbox" name="hochrisiko" value="${k.key}" ${a[k.key] ? 'checked' : ''} onchange="setHR('${k.key}', this.checked, this.closest('.check-option'))">
+        <div class="opt-text"><strong>${k.l}</strong>${k.h ? `<span>${k.h}</span>` : ''}</div>
+      </label>`).join('')}
+    </div>
+  </div>
+  ${hrActive ? `
+  <div class="field">
+    <label>Greift eine Ausnahme nach Art. 6 Abs. 3 EU AI Act? (Mehrfachauswahl möglich, ansonsten frei lassen)</label>
+    <details class="hint-detail">
+      <summary>Manche Anhang-III-Systeme fallen aus der Hochrisiko-Einstufung — wenn sie sehr eng begrenzt sind und kein Profiling stattfindet.</summary>
+      <div class="detail-body">Art. 6 Abs. 3 EU AI Act nimmt Anhang-III-Systeme von der Hochrisiko-Einstufung aus, wenn sie <strong>kein erhebliches Risiko</strong> für Gesundheit, Sicherheit oder Grundrechte darstellen <strong>und</strong> einen der vier Tatbestände erfüllen. Bei Profiling natürlicher Personen greift die Ausnahme nicht — das System bleibt dann hochriskant.</div>
+    </details>
+    <div class="check-group">
+      ${ausnahmen.map(x => `
+      <label class="check-option ${a[x.key] ? 'checked' : ''}">
+        <input type="checkbox" name="art6" value="${x.key}" ${a[x.key] ? 'checked' : ''} onchange="setHR('${x.key}', this.checked, this.closest('.check-option'))">
+        <div class="opt-text"><strong>${x.l}</strong><span>${x.h}</span></div>
+      </label>`).join('')}
+    </div>
+  </div>
+  ${ausnahmeGenutzt ? `
+  <div class="field">
+    <label>Führt das System Profiling natürlicher Personen durch?</label>
+    <details class="hint-detail">
+      <summary>Bewertet das System Personen — z. B. Arbeitsleistung, Verhalten, Gesundheit, Aufenthaltsort?</summary>
+      <div class="detail-body">Profiling im Sinne von Art. 4 Nr. 4 DSGVO: automatisierte Verarbeitung personenbezogener Daten zur Bewertung persönlicher Aspekte einer Person (Arbeitsleistung, wirtschaftliche Lage, Gesundheit, persönliche Vorlieben, Interessen, Zuverlässigkeit, Verhalten, Aufenthaltsort). Bei Profiling greift die Ausnahme nach Art. 6 Abs. 3 EU AI Act nicht.</div>
+    </details>
+    <div class="yn-group two">
+      ${['ja','nein'].map(v => `<div class="yn-btn ${a.art6_profiling === v ? 'selected' : ''}" onclick="setYN('art6_profiling','${v}',this)">${v === 'ja' ? 'Ja — Profiling erfolgt' : 'Nein — kein Profiling'}</div>`).join('')}
+    </div>
+    ${a.art6_profiling === 'nein' ? `<div class="alert alert-teal" style="margin-top:10px"><strong>Selbsteinschätzung nach Art. 6 Abs. 3:</strong><br>· Belastbar dokumentieren (Art. 6 Abs. 4): Aufgabenbeschreibung, Auswirkungsanalyse, Begründung warum kein erhebliches Risiko und kein wesentlicher Einfluss auf die Entscheidung besteht.<br>· In EU-Datenbank registrieren (Art. 49 Abs. 2) — auch ausgenommene Anhang-III-Systeme sind registrierungspflichtig.<br>· Aufsicht prüft die <strong>faktische Wirkung</strong>, nicht nur die Zweckbestimmung. Wer den Output „im Normalfall" übernimmt, fällt aus der Ausnahme.<br>· <em>Stand August 2026:</em> Die Kommission hat am 19.05.2026 Entwurfs-Leitlinien zur Hochrisiko-Einstufung nach Art. 6 Abs. 5 veröffentlicht; final sind sie noch nicht. Auslegung daher weiterhin restriktiv halten und juristisch absichern.</div>` : ''}
+    ${a.art6_profiling === 'ja' ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Ausnahme greift nicht:</strong> Bei Profiling bleibt das System hochriskant nach Anhang III. Vollständige Konformitätspflichten gelten.</div>` : ''}
+  </div>` : ''}
+  ${!ausnahmeGenutzt ? `<div class="alert alert-amber"><strong>⚠️ Hochrisiko-Bereich identifiziert.</strong> Hochrisiko-Systeme unterliegen vor Markteinführung umfangreichen Pflichten: Risikomanagement-System (Art. 9), Daten-Governance (Art. 10), technische Dokumentation (Anhang IV), Transparenz (Art. 13), Human Oversight (Art. 14), Konformitätsbewertung (Art. 43), Registrierung in der EU-Datenbank (Art. 49, Art. 71).</div>` : ''}` : ''}
+  <div class="field">
+    <label>Setzt der Use Case ein Foundation Model / GPAI ein? (z. B. ChatGPT, Claude, Gemini, Llama, Mistral)</label>
+    <details class="hint-detail">
+      <summary>Foundation Models wie ChatGPT oder Claude — eigene Pflichten je nachdem, wie Sie das Modell einsetzen.</summary>
+      <div class="detail-body">GPAI = General Purpose AI nach Art. 3 Nr. 63 EU AI Act. Reine Nutzung über API: Sie sind Deployer, Provider-Pflichten liegen beim Modell-Anbieter. Anpassung mit Fine-tuning oder substantieller Modifikation: Provider-Wechsel nach Art. 25 möglich. Eigenes Training: volle Provider-Pflichten Art. 53, bei systemischem Risiko zusätzlich Art. 55.</div>
+    </details>
+    <div class="yn-group">
+      ${[['ja','Ja'],['nein','Nein'],['unklar','Unklar / weiß nicht']].map(([v,l]) =>
+        `<div class="yn-btn ${a.gpai_genutzt === v ? 'selected' : ''}" onclick="setYN('gpai_genutzt','${v}',this)">${l}</div>`).join('')}
+    </div>
+    ${a.gpai_genutzt === 'ja' ? `
+    <div style="margin-top:14px">
+      <label style="font-size:13px">Welche Rolle nehmen Sie ein?</label>
+      <div class="hint">Die Rolle entscheidet, welche AI-Act-Pflichten Sie selbst tragen.</div>
+      <div class="yn-group">
+        ${[
+          ['deployer','Nutzer / Deployer','Modell unverändert per API oder Webinterface'],
+          ['modifizierer','Anpassung / Fine-tuning','Eigene Daten oder RAG, substantielle Modifikation'],
+          ['provider','Eigenes Foundation Model','Selbst entwickelt oder trainiert']
+        ].map(([v,l,sub]) => `<div class="yn-btn ${a.gpai_rolle === v ? 'selected' : ''}" onclick="setYN('gpai_rolle','${v}',this)">${l}<br><small style="font-weight:400;opacity:.7">${sub}</small></div>`).join('')}
+      </div>
+      ${a.gpai_rolle === 'deployer' ? `<div class="alert alert-teal" style="margin-top:10px"><strong>Deployer-Rolle:</strong> Provider-Pflichten Art. 53 ff. liegen beim Modell-Anbieter (OpenAI, Anthropic, Google etc.). Sie haben die normalen Deployer-Pflichten — Transparenz nach Art. 50, Human Oversight bei Hochrisiko-Einsatz, ggf. AGB-Compliance prüfen.</div>` : ''}
+      ${a.gpai_rolle === 'modifizierer' ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Achtung Provider-Wechsel (Art. 25):</strong> Bei substantieller Modifikation oder bei Inverkehrbringen unter eigenem Namen kann die Provider-Verantwortung auf Sie übergehen. Konsequenz: Pflichten nach Art. 53 (technische Dokumentation, Trainingsdaten-Zusammenfassung, Urheberrechts-Compliance-Policy). Der finale <a href="https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai" target="_blank" rel="noopener">GPAI Code of Practice</a> (10. Juli 2025) bietet einen von der Kommission anerkannten Konformitätspfad. Die Schwelle „substantiell" ist auslegungsbedürftig — im Zweifel juristisch prüfen lassen.</div>` : ''}
+      ${a.gpai_rolle === 'provider' ? `<div class="alert alert-red" style="margin-top:10px"><strong>Volle Provider-Pflichten:</strong><br>· <strong>Art. 53</strong> (alle GPAI-Provider): technische Dokumentation, Trainingsdaten-Zusammenfassung nach AI-Office-Vorlage, Urheberrechts-Compliance-Policy, EU-bevollmächtigter Vertreter.<br>· <strong>Art. 55</strong> (nur GPAI mit systemischem Risiko, gesetzliche Vermutung ab 10²⁵ FLOPs Trainingsaufwand nach Art. 51 Abs. 2): Modellbewertung, systemische Risikoanalyse, Adversarial Testing/Red-Teaming, Cybersecurity, Incident Reporting an das AI Office.<br>· Der <a href="https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai" target="_blank" rel="noopener">GPAI Code of Practice</a> gilt seit 10. Juli 2025 als „adäquates" freiwilliges Compliance-Instrument für Art. 53 und 55. Drei Kapitel: Transparenz, Urheberrecht, Sicherheit & Sicherheit (letzteres nur für systemisches Risiko).</div>` : ''}
+    </div>` : ''}
+    ${a.gpai_genutzt === 'unklar' ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Klärungsbedarf:</strong> Bei „Unklar" zuerst beantworten: Welches Modell wird genutzt, wo läuft es, welcher Anbieter? Erst dann lässt sich die GPAI-Frage seriös einordnen.</div>` : ''}
+  </div>
+  <div class="field">
+    <label>Interagiert das System direkt mit natürlichen Personen? (Chatbot, KI-Assistent, Sprachsystem)</label>
+    <div class="yn-group two">
+      ${['ja','nein'].map(v => `<div class="yn-btn ${a.transparenz_interaktion === v ? 'selected' : ''}" onclick="setYN('transparenz_interaktion','${v}',this)">${v === 'ja' ? 'Ja' : 'Nein'}</div>`).join('')}
+    </div>
+    ${a.transparenz_interaktion === 'ja' ? `
+    <div style="margin-top:14px">
+      <label style="font-size:13px">Ist die KI-Natur aus den Umständen offensichtlich?</label>
+      <details class="hint-detail">
+        <summary>Erkennt eine durchschnittlich aufmerksame Person sofort, dass sie mit einer KI spricht?</summary>
+        <div class="detail-body">Art. 50 Abs. 1 Satz 2 EU AI Act: Die Kennzeichnungspflicht entfällt, wenn die KI-Natur „aus den Umständen heraus klar erkennbar" ist. Beispiel offensichtlich: ein als „KI-Assistent" gebrandeter Chatbot auf einer Website. Beispiel nicht offensichtlich: ein menschlich klingender Telefonassistent ohne Hinweis.</div>
+      </details>
+      <div class="yn-group two">
+        ${['ja','nein'].map(v => `<div class="yn-btn ${a.art50_offensichtlich === v ? 'selected' : ''}" onclick="setYN('art50_offensichtlich','${v}',this)">${v === 'ja' ? 'Ja — offensichtlich' : 'Nein — nicht offensichtlich'}</div>`).join('')}
+      </div>
+    </div>` : ''}
+  </div>
+  <div class="field">
+    <label>Generiert das System Inhalte, die als menschlich wahrgenommen werden könnten? (Texte, Bilder, Audio, Video)</label>
+    <div class="yn-group two">
+      ${['ja','nein'].map(v => `<div class="yn-btn ${a.transparenz_genai === v ? 'selected' : ''}" onclick="setYN('transparenz_genai','${v}',this)">${v === 'ja' ? 'Ja' : 'Nein'}</div>`).join('')}
+    </div>
+    ${a.transparenz_genai === 'ja' ? `
+    <div style="margin-top:14px">
+      <label style="font-size:13px">Handelt es sich um Deepfakes oder synthetisch erzeugte Bilder/Videos/Audio von realen Personen, Orten oder Ereignissen?</label>
+      <div class="hint">Art. 50 Abs. 4 Unterabsatz 1: Deepfakes müssen klar als künstlich oder manipuliert gekennzeichnet werden. Ausnahme: offensichtlich künstlerische, satirische, fiktionale oder vergleichbare Werke — dort genügt eine angemessene Offenlegung, die das Werk nicht beeinträchtigt.</div>
+      <div class="yn-group two">
+        ${['ja','nein'].map(v => `<div class="yn-btn ${a.art50_deepfake === v ? 'selected' : ''}" onclick="setYN('art50_deepfake','${v}',this)">${v === 'ja' ? 'Ja — Deepfake/synthetisch' : 'Nein'}</div>`).join('')}
+      </div>
+    </div>` : ''}
+    ${(a.transparenz_genai === 'ja' || a.transparenz_interaktion === 'ja') ? `
+    <div class="alert alert-teal" style="margin-top:14px"><strong>Transparenzpflicht (Art. 50):</strong> Nutzer:innen müssen klar erkennbar informiert werden, dass sie mit einem KI-System interagieren oder dass Inhalte KI-generiert sind. Greift die Offensichtlich-Ausnahme nach Art. 50 Abs. 1 Satz 2, entfällt die explizite Kennzeichnung der Interaktion. Für Deepfakes gilt zusätzlich Art. 50 Abs. 4.</div>` : ''}
+  </div>`,
+  'Weiter', 'saveHochrisiko()');
+}
+
+function setHR(key, checked, el) {
+  state.answers[key] = checked;
+  if (checked) el.classList.add('checked'); else el.classList.remove('checked');
+  render();
+}
+
+function saveHochrisiko() {
+  const a = state.answers;
+  const hrFields = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'];
+  const hrActive = hrFields.some(f => a[f]);
+  const ausnahmeGenutzt = ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]);
+  if (hrActive && ausnahmeGenutzt && !a.art6_profiling) {
+    alert('Bitte die Profiling-Frage beantworten — sie entscheidet, ob die Ausnahme nach Art. 6 Abs. 3 tatsächlich greift.');
+    return;
+  }
+  if (!a.gpai_genutzt) {
+    alert('Bitte beantworten, ob ein Foundation Model / GPAI eingesetzt wird.'); return;
+  }
+  if (a.gpai_genutzt === 'ja' && !a.gpai_rolle) {
+    alert('Bitte die Rolle im Umgang mit dem Foundation Model auswählen.'); return;
+  }
+  if (!a.transparenz_interaktion || !a.transparenz_genai) {
+    alert('Bitte beide Transparenzfragen beantworten.'); return;
+  }
+  if (a.transparenz_interaktion === 'ja' && !a.art50_offensichtlich) {
+    alert('Bitte beantworten, ob die KI-Natur aus den Umständen offensichtlich ist.'); return;
+  }
+  if (a.transparenz_genai === 'ja' && !a.art50_deepfake) {
+    alert('Bitte beantworten, ob synthetische Inhalte/Deepfakes erzeugt werden.'); return;
+  }
+  state.step = 5;
+  render();
+}
+
+// ─────────────────────────────────────────────
+// STEP 5: GOVERNANCE
+// ─────────────────────────────────────────────
+function renderGovernance() {
+  const a = state.answers;
+  card(6, 'Team & Governance', 'Wer verantwortet, prüft und entscheidet? Vier Fragen zu Stakeholdern, die für den Übergang PoC → Pilotbetrieb gebraucht werden.',
+  `<div class="field">
+    <label>Ist ein Executive Sponsor benannt, der das Projekt aktiv unterstützt?</label>
+    <div class="yn-group">
+      ${[['ja','Ja'],['in_klaerung','In Klärung'],['nein','Noch nicht']].map(([v,l]) =>
+        `<div class="yn-btn ${a.gov_sponsor === v ? 'selected' : ''}" onclick="setYN('gov_sponsor','${v}',this)">${l}</div>`).join('')}
+    </div>
+    ${a.gov_sponsor === 'nein' ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Hinweis:</strong> Ohne benannte Verantwortung im Management bleiben Ressourcen-Entscheidungen und Eskalationen unklar — das fällt typischerweise im Übergang vom PoC zum Pilotbetrieb auf.</div>` : ''}
+  </div>
+  <div class="field">
+    <label>Sind Legal und Datenschutz bereits eingebunden?</label>
+    <div class="yn-group">
+      ${[['ja','Ja'],['geplant','Geplant'],['nein','Noch nicht']].map(([v,l]) =>
+        `<div class="yn-btn ${a.gov_legal === v ? 'selected' : ''}" onclick="setYN('gov_legal','${v}',this)">${l}</div>`).join('')}
+    </div>
+  </div>
+  <div class="field">
+    <label>Sind Mitarbeitende vom Use Case betroffen? (§ 87 Abs. 1 Nr. 6 BetrVG prüfen)</label>
+    <div class="hint">§ 87 Abs. 1 Nr. 6 BetrVG: Mitbestimmung bei technischen Einrichtungen zur Verhaltens- oder Leistungsüberwachung.</div>
+    <div class="yn-group">
+      ${[['ja','Ja'],['unklar','Unklar'],['nein','Nein']].map(([v,l]) =>
+        `<div class="yn-btn ${a.gov_betriebsrat === v ? 'selected' : ''}" onclick="setYN('gov_betriebsrat','${v}',this)">${l}</div>`).join('')}
+    </div>
+    ${(a.gov_betriebsrat === 'ja' || a.gov_betriebsrat === 'unklar') ? `<div class="alert alert-teal" style="margin-top:10px"><strong>Betriebsrat frühzeitig einbinden.</strong> Bei Systemen, die Leistung oder Verhalten von Mitarbeitenden erfassen oder beeinflussen, besteht Mitbestimmungspflicht. Betriebsvereinbarung vor Pilot-Start anstreben.</div>` : ''}
+  </div>
+  <div class="field">
+    <label>Sind Human-Oversight-Mechanismen eingeplant?</label>
+    <div class="hint">Wer überwacht die KI-Ausgaben? Wann greift ein Mensch ein? Wie wird Automation Bias verhindert?</div>
+    <div class="yn-group">
+      ${[['ja','Ja, definiert'],['geplant','In Planung'],['nein','Noch nicht']].map(([v,l]) =>
+        `<div class="yn-btn ${a.gov_oversight === v ? 'selected' : ''}" onclick="setYN('gov_oversight','${v}',this)">${l}</div>`).join('')}
+    </div>
+  </div>`,
+  'Bewertung abschließen', 'saveGovernance()');
+}
+
+function saveGovernance() {
+  const required = ['gov_sponsor','gov_legal','gov_betriebsrat','gov_oversight'];
+  if (required.some(k => !state.answers[k])) { alert('Bitte alle Fragen beantworten.'); return; }
+  state.riskClass = classifyRisk(state.answers);
+  state.step = 6;
+  render();
+}
+
+// ─────────────────────────────────────────────
+// STEP 6: ERGEBNIS
+// ─────────────────────────────────────────────
+function renderErgebnis() {
+  const a = state.answers;
+  const risk = state.riskClass;
+  const nextSteps = getNextSteps(risk, a);
+
+  const verdachtSonderkategorien = (a.daten_arten || []).some(x => ['gesundheit','biometrie'].includes(x));
+  const hrAktiv = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'].some(k => a[k]);
+  const art6GreiftWirklich = hrAktiv && ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]) && a.art6_profiling === 'nein';
+
+  const mc = document.getElementById('mainCard');
+  mc.innerHTML = `
+    <div class="card-step">Schritt 7 von 7 · Ergebnis</div>
+    <h2>Bewertungsergebnis</h2>
+    <p class="card-sub">Auf Basis der eingegebenen Informationen ergibt sich folgende Klassifizierung.</p>
+
+    <div class="risk-badge ${risk.class}">${risk.emoji} ${risk.label}</div>
+    <p style="font-size:14px;line-height:1.6;margin-bottom:20px">${risk.desc}</p>
+
+    <div class="reasoning-grid">
+      <div class="reasoning-item">
+        <h4>Zum Typ</h4>
+        <p>${(() => {
+          const m = { ja:'Eindeutig ein KI-System nach Art. 3 Abs. 1 EU AI Act.', wahrscheinlich:'Wahrscheinlich ein KI-System nach Art. 3 Abs. 1 — bei Grenzfällen juristisch absichern.', nein:'Kein KI-System nach Art. 3 Abs. 1 EU AI Act — die Verordnung greift voraussichtlich nicht.' };
+          return m[a.is_ai_system] || 'Selbsteinschätzung zur AI-VO-Definition liegt nicht vor.';
+        })()}</p>
+      </div>
+      <div class="reasoning-item">
+        <h4>Zur Klassifizierung</h4>
+        <p>${(() => {
+          if (risk.class === 'kein-ki') return 'Auf Basis der Antworten greift die EU-KI-Verordnung nicht. Andere Pflichten (DSGVO, AGG, BetrVG, Branchenrecht) bleiben.';
+          if (risk.class === 'verboten') return 'Eine oder mehrere Praktiken nach Art. 5 Abs. 1 EU AI Act treffen zu — die Implementierung in dieser Form ist nicht zulässig.';
+          if (risk.class === 'hoch') {
+            const anzHR = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'].filter(k => a[k]).length;
+            return `${anzHR} Anhang-III-Bereich(e) betroffen. Keine Ausnahme nach Art. 6 Abs. 3 angewandt oder Profiling findet statt — Hochrisiko-Pflichten gelten vollständig.`;
+          }
+          if (risk.class === 'begrenzt') {
+            const gruende = [];
+            if (a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja') gruende.push('KI-Interaktion mit Personen (nicht offensichtlich)');
+            if (a.transparenz_genai === 'ja') gruende.push('KI-erzeugte Inhalte (Art. 50 Abs. 2)');
+            if (art6GreiftWirklich) gruende.push('Anhang III mit greifender Ausnahme nach Art. 6 Abs. 3');
+            return `Auslöser: ${gruende.join(', ') || 'Transparenzpflichten Art. 50'}.`;
+          }
+          return 'Weder verbotene Praktik noch Anhang-III-Bereich noch Art.-50-Auslöser — keine spezifischen AI-Act-Pflichten, freiwillige Verhaltenskodizes nach Art. 95 möglich.';
+        })()}</p>
+      </div>
+      <div class="reasoning-item">
+        <h4>Zur Rolle</h4>
+        <p>${(() => {
+          const r = a.aivo_rolle || [];
+          if (!r.length) return 'Keine AI-VO-Rolle ausgewählt.';
+          const rollenStr = labelize(ROLLE_LABELS, r).join(' + ');
+          if (risk.class === 'kein-ki') return `${rollenStr}. AI-VO-Pflichten greifen nicht; klassische Sorgfaltspflichten bleiben.`;
+          if (risk.class === 'verboten') return `${rollenStr}. Unabhängig von der Rolle: Implementierung nicht zulässig.`;
+          const pflichtenHinweise = [];
+          if (r.includes('anbieter')) pflichtenHinweise.push('Anbieter: Art. 16 ff. — Konformitätsbewertung, Dokumentation, Qualitätsmanagement');
+          if (r.includes('betreiber')) pflichtenHinweise.push('Betreiber: Art. 26 — zweckkonforme Nutzung, Eingabedaten-Qualität, Information der Beschäftigten');
+          if (r.includes('importeur')) pflichtenHinweise.push('Importeur: Art. 23 — Konformitätsprüfung vor Inverkehrbringen');
+          if (r.includes('haendler')) pflichtenHinweise.push('Händler: Art. 24 — Sorgfaltsprüfung beim Inverkehrbringen');
+          if (r.includes('vertreter')) pflichtenHinweise.push('Bevollmächtigter Vertreter: Art. 22 — Vertretung gegenüber Behörden');
+          return `${rollenStr}. ${pflichtenHinweise.join(' · ')}`;
+        })()}</p>
+      </div>
+    </div>
+
+    <div class="result-grid">
+      <div class="result-item"><h4>Wertbeitrag</h4><p>${a.wertbeitrag || '—'}</p></div>
+      <div class="result-item"><h4>Reifegrad</h4><p>${ {standard:'Standardtool',anpassung:'Anpassung',eigenbau:'Eigenentwicklung',unklar:'Noch unklar'}[a.reifegrad] || '—'}</p></div>
+      <div class="result-item"><h4>Geschäftsproblem</h4><p>${a.problem_text || '—'}</p></div>
+      <div class="result-item"><h4>Bereich</h4><p>${a.bereich || '—'}</p></div>
+      <div class="result-item"><h4>KPI / Erfolgsziel</h4><p>${a.kpi || '—'}</p></div>
+      <div class="result-item"><h4>Personenbezogene Daten</h4><p>${a.daten_personenbezogen === 'ja' ? 'Ja' + (verdachtSonderkategorien ? ' (inkl. besondere Kategorien)' : '') : 'Nein'}</p></div>
+      <div class="result-item"><h4>Datenverfügbarkeit</h4><p>${{ja:'Vollständig',teilweise:'Teilweise',nein:'Nicht vorhanden'}[a.daten_verfuegbar] || '—'}</p></div>
+      <div class="result-item"><h4>Executive Sponsor</h4><p>${{ja:'Benannt',in_klaerung:'In Klärung',nein:'Fehlt'}[a.gov_sponsor] || '—'}</p></div>
+    </div>
+
+    ${risk.class === 'hoch' ? `
+    <div class="alert alert-amber">
+      <strong>Hochrisiko-System nach Anhang III EU AI Act:</strong> Vor dem Inverkehrbringen sind u. a. Risikomanagement-System (Art. 9), Daten-Governance (Art. 10), technische Dokumentation (Anhang IV), Human Oversight (Art. 14) und Konformitätsbewertung (Art. 43) verpflichtend. Für Medizinprodukte: Anhang III Kap. 5 i. V. m. MDR/IVDR prüfen.
+    </div>` : ''}
+
+    ${art6GreiftWirklich && risk.class !== 'hoch' ? `
+    <div class="alert alert-teal">
+      <strong>Art. 6 Abs. 3 Ausnahme angewandt:</strong> Anhang-III-Bereich ist betroffen, aber eine der vier Ausnahmen greift und kein Profiling natürlicher Personen findet statt. Folge: Klassifizierung als ${risk.label}, nicht als Hochrisiko. <strong>Trotzdem verpflichtend:</strong> Selbsteinschätzung dokumentieren (Art. 6 Abs. 4) und in EU-Datenbank registrieren (Art. 49 Abs. 2). Marktaufsicht kann jederzeit prüfen.
+    </div>` : ''}
+
+    ${verdachtSonderkategorien && risk.class !== 'verboten' ? `
+    <div class="alert alert-red">
+      <strong>Besondere Datenkategorien (Art. 9 DSGVO):</strong> Verarbeitung von Gesundheits- oder biometrischen Daten erfordert explizite Rechtsgrundlage und sehr wahrscheinlich eine DSFA (Art. 35 DSGVO).
+    </div>` : ''}
+
+    ${(() => {
+      const wirkungAufPersonen = (a.nutzer||[]).some(n => ['extern_kunden','extern_dritte','behoerden'].includes(n))
+                                  || a.hr_beschaeftigung || a.hr_services || a.hr_bildung;
+      if (a.automatisierungsgrad === 'vollautomatisch' && a.daten_personenbezogen === 'ja' && wirkungAufPersonen && risk.class !== 'verboten') {
+        return `<div class="alert alert-amber">
+          <strong>DSGVO Art. 22 — automatisierte Einzelentscheidung:</strong> Vollautomatische Entscheidung mit personenbezogenen Daten und Wirkung auf Personen. Prüfen, ob die Entscheidung Rechtswirkung oder ähnlich erhebliche Wirkung hat (Vertragsabschluss/-ablehnung, Kreditgewährung, Stellenangebot, Leistungsgewährung). Falls ja: Rechtsgrundlage nach Art. 22 Abs. 2 sichern, menschliche Intervention ermöglichen, Anfechtungsrecht und Information vor Entscheidung implementieren. Maßgeblich: <a href="https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32016R0679" target="_blank" rel="noopener">Art. 22 DSGVO</a> + EDPB-Leitlinien WP251 rev.01.
+        </div>`;
+      }
+      return '';
+    })()}
+
+    <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">Geltungsdaten EU AI Act</h3>
+    ${(() => {
+      const heute = new Date();
+      const meilensteine = [
+        { datum: new Date('2025-02-02'), label: 'Verbote nach Art. 5 + KI-Kompetenz-Pflicht (Art. 4)', show: true },
+        { datum: new Date('2025-07-10'), label: 'GPAI Code of Practice final veröffentlicht — anerkannter Konformitätspfad für Art. 53 und 55', show: a.gpai_genutzt === 'ja' },
+        { datum: new Date('2025-08-02'), label: 'Provider-Pflichten für Foundation Models / GPAI (Art. 53–55); Governance-Strukturen und Sanktionen (Kap. VII und XII, außer Art. 101)', show: true },
+        { datum: new Date('2026-07-27'), label: 'VO (EU) 2026/1744 („Digital Omnibus on AI") in Kraft: zwei neue Verbote (Art. 5 Abs. 1 lit. ba/bb), Hochrisiko-Geltung verschoben', show: true },
+        { datum: new Date('2026-08-02'), label: 'Transparenzpflichten nach Art. 50 anwendbar (Übergangsfrist von vier Monaten für Bestandssysteme bei den Kennzeichnungspflichten nach Abs. 2)', show: true },
+        { datum: new Date('2027-12-02'), label: 'Hochrisiko-Pflichten für Anhang-III-Systeme — durch VO (EU) 2026/1744 verschoben vom 02.08.2026', show: risk.class === 'hoch' },
+        { datum: new Date('2028-08-02'), label: 'Vollständige Anwendung (auch Anhang I — Hochrisiko-Systeme als Sicherheitskomponenten) — verschoben vom 02.08.2027', show: risk.class === 'hoch' },
+      ];
+      const items = meilensteine.filter(m => m.show);
+      return `<div style="border:1px solid #e0e0e0;border-radius:8px;padding:14px 18px;background:#fafafa;font-size:13px;line-height:1.6">
+        ${items.map(m => {
+          const istAktiv = heute >= m.datum;
+          const datumStr = m.datum.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+          return `<div style="padding:6px 0;border-bottom:1px solid #ececec;display:flex;gap:10px">
+            <span style="font-family:monospace;font-size:12px;color:${istAktiv ? '#166534' : '#999'};min-width:90px">${datumStr}</span>
+            <span style="color:${istAktiv ? '#0a1530' : '#666'}">${istAktiv ? '✓ aktiv' : '⏳ ab dann'} — ${m.label}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    })()}
+
+    <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">Empfohlene nächste Schritte</h3>
+    <ul class="next-steps">
+      ${nextSteps.map((s, i) => `<li><div class="ns-num">${i+1}</div><span>${s}</span></li>`).join('')}
+    </ul>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="resetEvaluation()">← Neue Bewertung</button>
+      <button class="btn btn-secondary" onclick="printPage()">🖨 Drucken / PDF</button>
+      <button class="btn btn-secondary" onclick="exportJSON()">⬇ JSON</button>
+      <button class="btn btn-secondary" onclick="exportMarkdown()">⬇ Markdown</button>
+    </div>
+
+    <div class="briefing-section">
+      <h3>Stakeholder-Briefing</h3>
+      <p>Auf Basis aller Antworten zusammengestellt. Läuft lokal im Browser, keine Daten verlassen das Gerät. Drei Varianten je nach Adressat — der Inhalt ist konsistent, die Schwerpunkte sind unterschiedlich.</p>
+      <div class="yn-group" style="margin-bottom:14px">
+        <div class="yn-btn" onclick="generateBriefing('management')"><strong>Management</strong><br><small style="font-weight:400;opacity:.7">Wertbeitrag, Risiko, Entscheidungsbedarf</small></div>
+        <div class="yn-btn" onclick="generateBriefing('compliance')"><strong>Compliance</strong><br><small style="font-weight:400;opacity:.7">Pflichten, Fristen, Dokumente</small></div>
+        <div class="yn-btn" onclick="generateBriefing('betriebsrat')"><strong>Betriebsrat</strong><br><small style="font-weight:400;opacity:.7">Mitarbeiterbezug, Mitbestimmung</small></div>
+      </div>
+      <div id="briefingOutput" class="briefing-output" style="display:none"></div>
+      <button class="btn btn-secondary copy-btn" id="copyBtn" style="display:none" onclick="copyBriefing()">📋 Kopieren</button>
+    </div>`;
+}
+
+function printPage() {
+  window.print();
+}
+
+// ─────────────────────────────────────────────
+// EXPORT FUNCTIONS
+// ─────────────────────────────────────────────
+function buildExportData() {
+  const a = state.answers;
+  const risk = state.riskClass;
+  const nextSteps = getNextSteps(risk, a);
+  const ts = new Date().toISOString();
+  return { meta: { tool: 'KI Use-Case Bewertung', version: '1.2', exported_at: ts },
+    wertbeitrag: { wertbeitrag: a.wertbeitrag || '', reifegrad: a.reifegrad || null, alternative: a.alternative || '' },
+    klassifikations_basis: { is_ai_system: a.is_ai_system || null, aivo_rolle: labelize(ROLLE_LABELS, a.aivo_rolle) },
+    problem: { text: a.problem_text, bereich: a.bereich, nutzer: labelize(NUTZER_LABELS, a.nutzer), kpi: a.kpi || '' },
+    daten: { personenbezogen: a.daten_personenbezogen, arten: labelize(DATEN_ARTEN_LABELS, a.daten_arten), verfuegbar: a.daten_verfuegbar },
+    diskriminierung: { schutzmerkmale_direkt: a.bias_direkt || null, schutzmerkmale_indirekt: a.bias_indirekt || null, bias_pruefung: a.bias_pruefung || null },
+    aiact: {
+      verbotene_praktiken: {
+        manipulation_lit_a: a.verboten_manipulation,
+        schwachstellen_lit_b: a.verboten_schwachstellen,
+        social_scoring_lit_c: a.verboten_social_scoring,
+        predictive_policing_lit_d: a.verboten_predictive_policing,
+        scraping_lit_e: a.verboten_scraping,
+        emotion_lit_f: a.verboten_emotion,
+        bio_kategorisierung_lit_g: a.verboten_bio_kategorisierung,
+        biometrie_rt_lit_h: a.verboten_biometrie_rt,
+        intimbilder_lit_ba: a.verboten_intimbilder,
+        csam_lit_bb: a.verboten_csam
+      },
+      hochrisiko_kategorien: ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung',
+        'hr_services','hr_strafverfolgung','hr_migration','hr_justiz'].filter(k => a[k]),
+      art6_abs3_ausnahme: {
+        a_eng_begrenzte_aufgabe: !!a.art6_a,
+        b_verbesserung_menschlicher_taetigkeit: !!a.art6_b,
+        c_erkennen_entscheidungsmuster: !!a.art6_c,
+        d_vorbereitende_aufgabe: !!a.art6_d,
+        profiling: a.art6_profiling || null,
+        ausnahme_greift: ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]) && a.art6_profiling === 'nein'
+      },
+      transparenzpflichten: {
+        interaktion: a.transparenz_interaktion,
+        interaktion_offensichtlich: a.art50_offensichtlich || null,
+        genai: a.transparenz_genai,
+        deepfake: a.art50_deepfake || null
+      },
+      gpai: {
+        genutzt: a.gpai_genutzt || null,
+        rolle: a.gpai_rolle || null
+      },
+      risikoklasse: risk ? { class: risk.class, label: risk.label, beschreibung: risk.desc } : null
+    },
+    governance: { sponsor: a.gov_sponsor, legal: a.gov_legal, betriebsrat: a.gov_betriebsrat, oversight: a.gov_oversight },
+    naechste_schritte: nextSteps,
+    briefing: state.briefing || null
+  };
+}
+
+function exportJSON() {
+  const data = buildExportData();
+  const slug = (state.answers.problem_text || 'usecase').slice(0, 30).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const date = new Date().toISOString().slice(0, 10);
+  download(`ki-bewertung_${slug}_${date}.json`, JSON.stringify(data, null, 2), 'application/json');
+}
+
+function exportMarkdown() {
+  const a = state.answers;
+  const risk = state.riskClass;
+  const nextSteps = getNextSteps(risk, a);
+  const ts = new Date().toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  const riskMap = { verboten: '🚫 Unzulässig', hoch: '⚠️ Hochrisiko', begrenzt: '💬 Begrenztes Risiko', minimal: '✅ Minimales Risiko' };
+  const hrLabels = {
+    hr_biometrie:    '1 · Biometrie',
+    hr_infrastruktur:'2 · Kritische Infrastruktur',
+    hr_bildung:      '3 · Bildung und Berufsausbildung',
+    hr_beschaeftigung:'4 · Beschäftigung und Personalmanagement',
+    hr_services:     '5 · Wesentliche Dienste',
+    hr_strafverfolgung:'6 · Strafverfolgung',
+    hr_migration:    '7 · Migration, Asyl, Grenzkontrolle',
+    hr_justiz:       '8 · Rechtspflege und demokratische Prozesse'
+  };
+  const activeHR = Object.keys(hrLabels).filter(k => a[k]).map(k => hrLabels[k]);
+  const verdacht = (a.daten_arten || []).some(x => ['gesundheit','biometrie'].includes(x));
+
+  let md = `# KI Use-Case Bewertung\n\n`;
+  md += `**Erstellt:** ${ts}  \n`;
+  md += `**Tool:** KI Use-Case Bewertung & AI Act Klassifizierung v1.2\n\n`;
+  md += `---\n\n`;
+
+  md += `## Ergebnis\n\n`;
+  md += `**AI Act Risikoklasse:** ${riskMap[risk?.class] || '—'}  \n`;
+  md += `${risk?.desc || ''}\n\n`;
+
+  // Schwächen der Vorprüfung prominent
+  const schwaechen = detectVorpruefungsSchwaechen(a);
+  if (schwaechen.length > 0) {
+    md += `### ⚠️ Schwächen der Vorprüfung\n\n`;
+    md += `Die folgenden Punkte sind im Eingang noch nicht belastbar. Vor einer Sponsorship-Entscheidung nachschärfen — die Klassifizierung darunter beruht auf den vorliegenden Antworten und ist nur so belastbar wie sie.\n\n`;
+    schwaechen.forEach(s => {
+      md += `- **${s.feld}** — „${s.text}"  \n  Anmerkung: ${s.grund}\n`;
+    });
+    md += `\n`;
+  }
+
+  const aiSystemMap = { ja:'Eindeutig KI-System nach Art. 3 Abs. 1', wahrscheinlich:'Wahrscheinlich KI-System nach Art. 3 Abs. 1', nein:'Kein KI-System nach Art. 3 Abs. 1' };
+  md += `### Klassifikations-Basis\n\n`;
+  md += `| Aspekt | Antwort |\n|---|---|\n`;
+  md += `| Typ | ${aiSystemMap[a.is_ai_system] || '—'} |\n`;
+  md += `| AI-VO-Rolle | ${labelize(ROLLE_LABELS, a.aivo_rolle).join(', ') || '—'} |\n\n`;
+
+  const reifegradMap = { standard:'Standardtool', anpassung:'Anpassung / Customizing', eigenbau:'Eigenentwicklung', unklar:'Noch unklar' };
+  md += `## Vorprüfung Wertbeitrag\n\n`;
+  md += `**Wertbeitrag:** ${a.wertbeitrag || '—'}  \n`;
+  md += `**Reifegrad:** ${reifegradMap[a.reifegrad] || '—'}  \n`;
+  md += `**Geprüfte Alternative:** ${a.alternative || '—'}\n\n`;
+
+  md += `## Problemdefinition\n\n`;
+  md += `| Feld | Wert |\n|---|---|\n`;
+  md += `| Geschäftsproblem | ${a.problem_text || '—'} |\n`;
+  md += `| Bereich | ${a.bereich || '—'} |\n`;
+  md += `| KPI / Erfolgsziel | ${a.kpi || '—'} |\n`;
+  md += `| Nutzer:innen | ${labelize(NUTZER_LABELS, a.nutzer).join(', ') || '—'} |\n\n`;
+
+  md += `## Datenlage\n\n`;
+  md += `| Feld | Wert |\n|---|---|\n`;
+  md += `| Personenbezogene Daten | ${a.daten_personenbezogen === 'ja' ? 'Ja' + (verdacht ? ' (inkl. besondere Kategorien)' : '') : 'Nein'} |\n`;
+  if ((a.daten_arten || []).length) md += `| Datenkategorien | ${labelize(DATEN_ARTEN_LABELS, a.daten_arten).join(', ')} |\n`;
+  md += `| Datenverfügbarkeit | ${{ja:'Vollständig',teilweise:'Teilweise',nein:'Nicht vorhanden'}[a.daten_verfuegbar] || '—'} |\n\n`;
+
+  if (a.bias_direkt || a.bias_indirekt || a.bias_pruefung) {
+    md += `### Diskriminierungsrisiko\n\n`;
+    md += `| Prüfpunkt | Antwort |\n|---|---|\n`;
+    md += `| Schutzmerkmale direkt verarbeitet | ${ {ja:'⚠️ Ja',nein:'✓ Nein'}[a.bias_direkt] || '—'} |\n`;
+    md += `| Schutzmerkmale indirekt ableitbar | ${ {ja:'⚠️ Ja, wahrscheinlich',unklar:'⏳ Unklar / nicht geprüft',nein:'✓ Nein'}[a.bias_indirekt] || '—'} |\n`;
+    md += `| Bias-Prüfung im Prozess | ${ {ja:'✓ Ja, geplant oder umgesetzt',geplant:'⏳ In Klärung',nein:'❌ Nein'}[a.bias_pruefung] || '—'} |\n\n`;
+  }
+
+  md += `## AI Act Klassifizierung\n\n`;
+  md += `### Verbotene Praktiken (Art. 5)\n\n`;
+  md += `| Praktik | Ergebnis |\n|---|---|\n`;
+  md += `| Unterschwellige/manipulative Techniken (lit. a) | ${a.verboten_manipulation === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n`;
+  md += `| Ausnutzen von Schwachstellen (lit. b) | ${a.verboten_schwachstellen === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n`;
+  md += `| Social Scoring (lit. c) | ${a.verboten_social_scoring === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n`;
+  md += `| Predictive Policing auf Profilbasis (lit. d) | ${a.verboten_predictive_policing === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n`;
+  md += `| Untargeted Scraping für Gesichtserkennung (lit. e) | ${a.verboten_scraping === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n`;
+  md += `| Emotionserkennung Arbeitsplatz/Bildung (lit. f) | ${a.verboten_emotion === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n`;
+  md += `| Biometrische Kategorisierung sensibler Merkmale (lit. g) | ${a.verboten_bio_kategorisierung === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n`;
+  md += `| Biometrische Echtzeit-Fernidentifikation (lit. h) | ${a.verboten_biometrie_rt === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n`;
+  md += `| Nicht-einvernehmliche Intimdarstellungen (lit. ba) | ${a.verboten_intimbilder === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n`;
+  md += `| Erzeugung von CSAM (lit. bb) | ${a.verboten_csam === 'ja' ? '🚫 Ja' : '✓ Nein'} |\n\n`;
+
+  if (activeHR.length) {
+    md += `### Hochrisiko-Bereiche (Anhang III)\n\n`;
+    activeHR.forEach(l => md += `- ${l}\n`);
+    md += `\n`;
+  }
+
+  const ausnahmenLabels = {
+    art6_a: 'a) Eng begrenzte verfahrensbezogene Aufgabe',
+    art6_b: 'b) Verbesserung einer abgeschlossenen menschlichen Tätigkeit',
+    art6_c: 'c) Erkennen von Entscheidungsmustern ohne Ersatz menschlicher Bewertung',
+    art6_d: 'd) Vorbereitende Aufgabe'
+  };
+  const aktiveAusnahmen = Object.keys(ausnahmenLabels).filter(k => a[k]).map(k => ausnahmenLabels[k]);
+  if (activeHR.length && (aktiveAusnahmen.length || a.art6_profiling)) {
+    md += `### Art. 6 Abs. 3 Ausnahme-Prüfung\n\n`;
+    if (aktiveAusnahmen.length) {
+      md += `**Geltend gemachte Ausnahme(n):**\n`;
+      aktiveAusnahmen.forEach(l => md += `- ${l}\n`);
+    }
+    md += `**Profiling natürlicher Personen:** ${a.art6_profiling === 'ja' ? '⚠️ Ja — Ausnahme greift nicht' : a.art6_profiling === 'nein' ? '✓ Nein' : '—'}  \n`;
+    const greift = aktiveAusnahmen.length && a.art6_profiling === 'nein';
+    md += `**Ergebnis:** ${greift ? '✓ Ausnahme greift — kein Hochrisiko, aber Dokumentations- und Registrierungspflicht' : '⚠️ Ausnahme greift nicht — vollständige Hochrisiko-Pflichten'}\n\n`;
+  }
+
+  if (a.gpai_genutzt) {
+    md += `### Foundation Model / GPAI\n\n`;
+    md += `| Feld | Wert |\n|---|---|\n`;
+    md += `| Foundation Model im Einsatz | ${ {ja:'Ja',nein:'Nein',unklar:'Unklar'}[a.gpai_genutzt] || '—'} |\n`;
+    if (a.gpai_genutzt === 'ja') {
+      const rolleMap = { deployer:'Nutzer/Deployer', modifizierer:'Anpassung/Fine-tuning', provider:'Eigenes Foundation Model' };
+      md += `| Rolle | ${rolleMap[a.gpai_rolle] || '—'} |\n`;
+    }
+    md += `\n`;
+  }
+
+  md += `### Transparenzpflichten (Art. 50)\n\n`;
+  md += `| Prüfpunkt | Ergebnis |\n|---|---|\n`;
+  const interaktionPflicht = a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja';
+  md += `| Direkte Interaktion mit Personen | ${a.transparenz_interaktion === 'ja' ? (interaktionPflicht ? '⚠️ Ja — Kennzeichnungspflicht (Art. 50 Abs. 1)' : '💬 Ja, aber offensichtlich (Ausnahme Art. 50 Abs. 1 Satz 2)') : '✓ Nein'} |\n`;
+  md += `| KI-generierte Inhalte | ${a.transparenz_genai === 'ja' ? '⚠️ Ja — Kennzeichnungspflicht (Art. 50 Abs. 2)' : '✓ Nein'} |\n`;
+  if (a.art50_deepfake) {
+    md += `| Deepfakes / synthetische Bilder/Audio/Video | ${a.art50_deepfake === 'ja' ? '⚠️ Ja — Kennzeichnungspflicht (Art. 50 Abs. 4)' : '✓ Nein'} |\n`;
+  }
+  md += `\n`;
+
+  md += `## Governance\n\n`;
+  md += `| Feld | Status |\n|---|---|\n`;
+  md += `| Executive Sponsor | ${{ja:'✓ Benannt',in_klaerung:'⏳ In Klärung',nein:'❌ Fehlt'}[a.gov_sponsor] || '—'} |\n`;
+  md += `| Legal / Datenschutz | ${{ja:'✓ Eingebunden',geplant:'⏳ Geplant',nein:'❌ Noch nicht'}[a.gov_legal] || '—'} |\n`;
+  md += `| Betriebsrat (§ 87 BetrVG) | ${{ja:'⚠️ Relevant',unklar:'⏳ Unklar',nein:'✓ Nicht betroffen'}[a.gov_betriebsrat] || '—'} |\n`;
+  md += `| Human Oversight | ${{ja:'✓ Definiert',geplant:'⏳ In Planung',nein:'❌ Noch nicht'}[a.gov_oversight] || '—'} |\n\n`;
+
+  md += `## Geltungsdaten EU AI Act\n\n`;
+  const heute = new Date();
+  const meilensteine = [
+    { datum: '02.02.2025', label: 'Verbote nach Art. 5 + KI-Kompetenz-Pflicht (Art. 4)', d: new Date('2025-02-02') },
+    { datum: '10.07.2025', label: 'GPAI Code of Practice final veröffentlicht', d: new Date('2025-07-10') },
+    { datum: '02.08.2025', label: 'GPAI-Provider-Pflichten (Art. 53–55); Governance und Sanktionen (Kap. VII und XII, außer Art. 101)', d: new Date('2025-08-02') },
+    { datum: '27.07.2026', label: 'VO (EU) 2026/1744 in Kraft: neue Verbote Art. 5 Abs. 1 lit. ba/bb, Hochrisiko-Geltung verschoben', d: new Date('2026-07-27') },
+    { datum: '02.08.2026', label: 'Transparenzpflichten nach Art. 50 (Übergangsfrist 4 Monate für Bestandssysteme bei Abs. 2)', d: new Date('2026-08-02') },
+    { datum: '02.12.2027', label: 'Hochrisiko-Pflichten für Anhang-III-Systeme (verschoben vom 02.08.2026)', d: new Date('2027-12-02') },
+    { datum: '02.08.2028', label: 'Vollständige Anwendung inkl. Anhang I (verschoben vom 02.08.2027)', d: new Date('2028-08-02') },
+  ];
+  md += `| Datum | Status | Inhalt |\n|---|---|---|\n`;
+  meilensteine.forEach(m => {
+    md += `| ${m.datum} | ${heute >= m.d ? '✓ aktiv' : '⏳ ab dann'} | ${m.label} |\n`;
+  });
+  md += `\n`;
+
+  md += `## Empfohlene nächste Schritte\n\n`;
+  nextSteps.forEach((s, i) => md += `${i + 1}. ${s}\n`);
+
+  if (state.briefing) {
+    md += `\n---\n\n## Stakeholder-Briefing\n\n${state.briefing}\n`;
+  }
+
+  md += `\n---\n\n*Exportiert mit KI Use-Case Bewertung v1.2 · ${ts}*\n`;
+
+  const slug = (a.problem_text || 'usecase').slice(0, 30).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const date = new Date().toISOString().slice(0, 10);
+  download(`ki-bewertung_${slug}_${date}.md`, md, 'text/markdown');
+}
+
+function download(filename, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+function copyBriefing() {
+  const text = document.getElementById('briefingOutput').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Kopiert';
+    setTimeout(() => btn.textContent = orig, 1800);
+  });
+}
+
+// ─────────────────────────────────────────────
+// QUALITÄTS-HEURISTIK FÜR DIE VORPRÜFUNG
+// ─────────────────────────────────────────────
+function detectVorpruefungsSchwaechen(a) {
+  const schwaechen = [];
+  const vagueWords = /\b(effizien[zt]|verbesser|schneller|optimier|nachhalti|innovativ|moderner|besser|mehr produktiv)\b/i;
+  const wb = (a.wertbeitrag || '').trim();
+  const alt = (a.alternative || '').trim();
+  // Wertbeitrag prüfen
+  if (wb.length < 60) {
+    schwaechen.push({ feld: 'Wertbeitrag', text: wb || '(leer)', grund: 'sehr knapp formuliert — konkrete Zahl, Zielgröße oder Vergleich fehlt' });
+  } else if (vagueWords.test(wb) && !/[0-9]/.test(wb)) {
+    schwaechen.push({ feld: 'Wertbeitrag', text: wb, grund: 'verwendet vage Begriffe ohne messbare Größe' });
+  }
+  // Alternative prüfen
+  if (alt.length < 50) {
+    schwaechen.push({ feld: 'Geprüfte Alternative', text: alt || '(leer)', grund: 'sehr knapp — welche konkrete Alternative wurde wirklich verglichen, und warum reicht sie nicht?' });
+  }
+  // Reifegrad „unklar" ist eine Schwäche
+  if (a.reifegrad === 'unklar') {
+    schwaechen.push({ feld: 'Reifegrad', text: 'noch unklar', grund: 'Standardtool, Anpassung und Eigenentwicklung bedeuten unterschiedliche Compliance-Last und Time-to-Value' });
+  }
+  return schwaechen;
+}
+
+// ─────────────────────────────────────────────
+// BRIEFING GENERATION (Template-basiert, läuft lokal)
+// Drei Adressaten: Management, Compliance, Betriebsrat
+// ─────────────────────────────────────────────
+function briefingDataPack(a, risk) {
+  const reifegradMap = { standard:'Standardtool', anpassung:'Anpassung / Customizing', eigenbau:'Eigenentwicklung', unklar:'Reifegrad noch unklar' };
+  const hrLabels = {
+    hr_biometrie:'Biometrie', hr_infrastruktur:'Kritische Infrastruktur', hr_bildung:'Bildung und Berufsausbildung',
+    hr_beschaeftigung:'Beschäftigung und Personalmanagement', hr_services:'Wesentliche Dienste',
+    hr_strafverfolgung:'Strafverfolgung', hr_migration:'Migration, Asyl, Grenzkontrolle',
+    hr_justiz:'Rechtspflege und demokratische Prozesse'
+  };
+  const aktiveHR = Object.keys(hrLabels).filter(k => a[k]).map(k => hrLabels[k]);
+  const ausnahmen = ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]);
+  const art6Greift = aktiveHR.length && ausnahmen && a.art6_profiling === 'nein';
+  const arten = labelize(DATEN_ARTEN_LABELS, a.daten_arten);
+  const wirkungAufPersonen = (a.nutzer||[]).some(n => ['extern_kunden','extern_dritte','behoerden'].includes(n))
+                              || a.hr_beschaeftigung || a.hr_services || a.hr_bildung;
+  const art22Relevant = a.automatisierungsgrad === 'vollautomatisch' && a.daten_personenbezogen === 'ja' && wirkungAufPersonen;
+  const biasRisiko = a.bias_direkt === 'ja' || a.bias_indirekt === 'ja' || a.bias_indirekt === 'unklar';
+  const sonderkategorien = arten.includes('Gesundheits-/medizinische Daten') || arten.includes('Biometrische Daten');
+  return { reifegradMap, aktiveHR, art6Greift, arten, art22Relevant, biasRisiko, sonderkategorien };
+}
+
+function briefingHeader(adressat) {
+  const datum = new Date().toLocaleDateString('de-DE');
+  const titel = { management:'Management-Briefing', compliance:'Compliance-Briefing', betriebsrat:'Briefing für den Betriebsrat' }[adressat];
+  return `# ${titel}\nKI Use-Case Bewertung · erstellt am ${datum}\n`;
+}
+
+function briefingSchwaechen(a) {
+  const schwaechen = detectVorpruefungsSchwaechen(a);
+  if (schwaechen.length === 0) return '';
+  return `\n## ⚠️ Schwächen der Vorprüfung\n\nDie folgenden Punkte sind im Eingang noch nicht belastbar. Vor einer Entscheidung nachschärfen — die Einschätzung darunter ist nur so belastbar wie diese Antworten.\n\n${schwaechen.map(s => `· **${s.feld}** — „${s.text}"  \n  Anmerkung: ${s.grund}`).join('\n\n')}\n`;
+}
+
+function briefingFooter() {
+  return `\n---\n*Deterministisch generiert aus den Antworten der Use-Case-Bewertung. Ersetzt weder Rechtsberatung noch Stakeholder-Gespräche. Alle regulatorischen Hinweise bleiben Erstcheck — keine Konformitätsbewertung.*`;
+}
+
+// — Variante: Management ——————————————————
+function briefingManagement(a, risk) {
+  const d = briefingDataPack(a, risk);
+  const sponsorStatus = { ja:'benannt', in_klaerung:'in Klärung', nein:'fehlt' }[a.gov_sponsor] || 'unklar';
+  const risikoSatz = {
+    verboten: 'Der Use Case ist in dieser Form nicht zulässig (Art. 5 EU AI Act). Stoppen, Alternativen prüfen, Legal informieren.',
+    hoch: `Hochrisiko-System nach Anhang III${d.aktiveHR.length ? ' (' + d.aktiveHR.join(', ') + ')' : ''}. Vor Inverkehrbringen Konformitätsbewertung, Dokumentation und Registrierung — Aufwand und Vorlauf einplanen.`,
+    begrenzt: 'Begrenztes Risiko mit Transparenzpflichten nach Art. 50 — überschaubarer Compliance-Aufwand, aber Pflichten greifen heute schon.',
+    minimal: 'Minimales Risiko nach EU AI Act. Datenschutz und ggf. AGG bleiben relevant.'
+  }[risk.class];
+
+  return `${briefingHeader('management')}${briefingSchwaechen(a)}
+## Worum es geht
+${a.problem_text || '—'}
+**Bereich:** ${a.bereich || '—'} · **Reifegrad:** ${d.reifegradMap[a.reifegrad] || '—'} · **Erfolgsziel:** ${a.kpi || '—'}
+
+## Erwarteter Wertbeitrag
+${a.wertbeitrag || '—'}
+
+## Risiko in einem Satz
+${risikoSatz}
+
+## Entscheidungsbedarf
+- Executive Sponsor: ${sponsorStatus}${a.gov_sponsor === 'nein' || a.gov_sponsor === 'in_klaerung' ? ' — **vor PoC-Start klären**' : ''}
+- Legal/Datenschutz: ${ {ja:'eingebunden',geplant:'geplant',nein:'noch nicht'}[a.gov_legal] || 'unklar'}${a.gov_legal !== 'ja' ? ' — **vor Datenbeschaffung einbinden**' : ''}
+${a.gov_betriebsrat === 'ja' || a.gov_betriebsrat === 'unklar' ? '- Betriebsrat: relevant — Betriebsvereinbarung vor Pilotbetrieb' : ''}
+${d.art22Relevant ? '- DSGVO Art. 22 (automatisierte Einzelentscheidung): Rechtsgrundlage und Anfechtungsrecht klären' : ''}
+${d.biasRisiko && a.bias_pruefung !== 'ja' ? '- Bias-Prüfung im Beschaffungs- oder Entwicklungsprozess verankern' : ''}
+
+## Empfehlung für die nächsten 4 Wochen
+${a.gov_sponsor !== 'ja' ? '1. Sponsor benennen, Mandat klären, Budget skizzieren.\n' : ''}${a.gov_legal !== 'ja' ? '2. Kick-off mit Legal und DSB — Datenfluss, Risikoklasse, Betroffenenrechte.\n' : ''}3. PoC-Scope eng definieren, Zeitrahmen 4–8 Wochen, klare Abbruchkriterien.
+${briefingFooter()}`;
+}
+
+// — Variante: Compliance ——————————————————
+function briefingCompliance(a, risk) {
+  const d = briefingDataPack(a, risk);
+  const pflichten = [];
+  const rollen = a.aivo_rolle || [];
+  // Rollenspezifische Pflichten
+  if (rollen.includes('anbieter')) {
+    pflichten.push('Anbieter-Pflichten Art. 16 ff.: Konformitätsbewertung, technische Dokumentation, Qualitätsmanagementsystem, Post-Market-Monitoring, ggf. CE-Kennzeichnung');
+  }
+  if (rollen.includes('betreiber') && risk.class === 'hoch') {
+    pflichten.push('Betreiber-Pflichten Art. 26: zweckkonforme Nutzung, Eingabedaten-Qualität, Human Oversight wirksam machen, Logs aufbewahren, Information der betroffenen Beschäftigten');
+  }
+  if (rollen.includes('importeur')) {
+    pflichten.push('Importeur-Pflichten Art. 23: Konformitätsbewertung des Anbieters prüfen, CE-Kennzeichnung kontrollieren, eigene Kontaktdaten anbringen');
+  }
+  if (rollen.includes('haendler')) {
+    pflichten.push('Händler-Pflichten Art. 24: Sorgfaltsprüfung beim Inverkehrbringen, CE-Kennzeichnung und Begleitdokumente sichten');
+  }
+  if (rollen.includes('vertreter')) {
+    pflichten.push('Bevollmächtigter Vertreter Art. 22: Vertretung des Anbieters aus Drittland gegenüber EU-Behörden, Aufbewahrung der Dokumente');
+  }
+  // Risikoklassen-Pflichten
+  if (risk.class === 'hoch') {
+    pflichten.push('Risikomanagement-System (Art. 9)', 'Daten-Governance, Bias-Mitigation (Art. 10)', 'Technische Dokumentation (Anhang IV)', 'Transparenz und Information (Art. 13)', 'Human Oversight (Art. 14)', 'Konformitätsbewertung (Art. 43)', 'Registrierung in der EU-Datenbank (Art. 49, Art. 71)');
+  }
+  if (d.art6Greift) {
+    pflichten.push('Selbsteinschätzung Art. 6 Abs. 3 dokumentieren (Art. 6 Abs. 4)', 'Registrierung trotz Ausnahme (Art. 49 Abs. 2)');
+  }
+  if (a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja') pflichten.push('Kennzeichnung der KI-Interaktion (Art. 50 Abs. 1)');
+  if (a.transparenz_genai === 'ja') pflichten.push('Maschinenlesbare Kennzeichnung KI-generierter Inhalte (Art. 50 Abs. 2)');
+  if (a.art50_deepfake === 'ja') pflichten.push('Deepfake-Kennzeichnung (Art. 50 Abs. 4)');
+  if (a.gpai_rolle === 'modifizierer') pflichten.push('Substantielle-Modifikation-Schwelle nach Art. 25 prüfen, ggf. Provider-Pflichten Art. 53');
+  if (a.gpai_rolle === 'provider') pflichten.push('GPAI-Provider-Pflichten Art. 53', a.gpai_rolle === 'provider' ? 'Bei systemischem Risiko zusätzlich Art. 55 (10²⁵-FLOPs-Schwelle)' : '');
+  if (a.daten_personenbezogen === 'ja') pflichten.push('DSFA-Schwellenwertprüfung (DSGVO Art. 35)');
+  if (d.sonderkategorien) pflichten.push('Rechtsgrundlage für besondere Kategorien (Art. 9 DSGVO), DSFA wahrscheinlich');
+  if (d.art22Relevant) pflichten.push('Schutzpflichten DSGVO Art. 22 (Information, menschliche Intervention, Anfechtungsrecht)');
+  if (d.biasRisiko) pflichten.push('Bias-Prüfung dokumentieren — bei Hochrisiko verpflichtend, sonst aus AGG-Sicht empfohlen');
+
+  const dokumente = ['Use-Case-Beschreibung mit Zweckbindung', 'Datenflussdiagramm', 'Verzeichnis von Verarbeitungstätigkeiten (DSGVO Art. 30)'];
+  if (risk.class === 'hoch') dokumente.push('Technische Dokumentation Anhang IV', 'Risikomanagement-Akte', 'Konformitätsbewertungs-Bericht');
+  if (d.art22Relevant) dokumente.push('Information für Betroffene über automatisierte Entscheidung');
+
+  return `${briefingHeader('compliance')}${briefingSchwaechen(a)}
+## Klassifikations-Basis
+**Typ:** ${ {ja:'KI-System nach Art. 3 Abs. 1',wahrscheinlich:'wahrscheinlich KI-System nach Art. 3 Abs. 1',nein:'kein KI-System nach Art. 3 Abs. 1'}[a.is_ai_system] || '—'}
+**AI-VO-Rolle:** ${labelize(ROLLE_LABELS, a.aivo_rolle).join(', ') || '—'}
+
+## Klassifizierung mit Begründung
+**AI Act:** ${risk.label}. ${risk.desc}
+${d.aktiveHR.length ? `**Anhang III:** ${d.aktiveHR.join(', ')}${d.art6Greift ? '. Ausnahme Art. 6 Abs. 3 angewandt — kein Profiling.' : '.'}` : ''}
+${a.gpai_genutzt === 'ja' ? `**GPAI:** Foundation Model im Einsatz, Rolle: ${ {deployer:'Deployer',modifizierer:'Modifizierer',provider:'Provider'}[a.gpai_rolle] || 'unklar'}.` : ''}
+
+## Pflichten
+${pflichten.length ? pflichten.filter(Boolean).map(p => `· ${p}`).join('\n') : '· Keine spezifischen AI-Act-Pflichten — DSGVO und ggf. AGG bleiben relevant.'}
+
+## Erforderliche Dokumente
+${dokumente.map(d => `· ${d}`).join('\n')}
+
+## Fristen (heutiger Stand)
+· Verbote nach Art. 5 + KI-Kompetenz (Art. 4): seit 02.02.2025 anwendbar; neue Verbote lit. ba/bb seit 27.07.2026 (VO (EU) 2026/1744)
+· GPAI-Provider-Pflichten (Art. 53–55), Governance und Sanktionen: seit 02.08.2025 anwendbar
+· Transparenzpflichten (Art. 50): seit 02.08.2026 anwendbar
+· Hochrisiko-Pflichten (Anhang III): ab 02.12.2027 (verschoben durch VO (EU) 2026/1744)
+· Vollständige Anwendung (inkl. Anhang I): ab 02.08.2028
+
+## Verantwortlichkeiten — Status
+| Rolle | Stand |
+|---|---|
+| Executive Sponsor | ${ {ja:'benannt',in_klaerung:'in Klärung',nein:'fehlt'}[a.gov_sponsor] || 'unklar'} |
+| Legal / Datenschutz | ${ {ja:'eingebunden',geplant:'geplant',nein:'noch nicht'}[a.gov_legal] || 'unklar'} |
+| Betriebsrat | ${ {ja:'relevant',unklar:'noch zu klären',nein:'nicht betroffen'}[a.gov_betriebsrat] || 'unklar'} |
+| Human Oversight | ${ {ja:'definiert',geplant:'in Planung',nein:'noch nicht'}[a.gov_oversight] || 'unklar'} |
+${briefingFooter()}`;
+}
+
+// — Variante: Betriebsrat ——————————————————
+function briefingBetriebsrat(a, risk) {
+  const d = briefingDataPack(a, risk);
+  const internBetroffen = (a.nutzer||[]).some(n => ['intern_ma','intern_fuehrung'].includes(n)) || a.hr_beschaeftigung;
+  const leistungsErfassung = a.hr_beschaeftigung || (a.daten_arten||[]).includes('leistung');
+  const autoGrad = { vollautomatisch:'vollautomatisch — die KI entscheidet oder agiert ohne menschliche Zwischenprüfung', unterstuetzend:'unterstützend — Mitarbeitende prüfen jeden Vorschlag, bevor er wirksam wird', unklar:'noch unklar — die Klärung gehört zu den ersten Punkten der Betriebsvereinbarung' }[a.automatisierungsgrad] || '—';
+
+  const mitbestimmung = [];
+  if (leistungsErfassung) mitbestimmung.push('§ 87 Abs. 1 Nr. 6 BetrVG — Mitbestimmung bei technischen Einrichtungen zur Verhaltens- oder Leistungsüberwachung. Greift bei jedem System, das objektiv geeignet ist, Verhalten oder Leistung zu erfassen — unabhängig von der eigentlichen Absicht.');
+  if (a.gov_betriebsrat === 'ja' || a.gov_betriebsrat === 'unklar') mitbestimmung.push('§ 90 BetrVG — Unterrichtung und Beratung bei Planung von Arbeitsverfahren und Arbeitsabläufen. Frühzeitig, nicht erst beim Rollout.');
+  if (a.bias_direkt === 'ja' || a.bias_indirekt === 'ja' || a.bias_indirekt === 'unklar') mitbestimmung.push('§ 75 BetrVG — Schutzpflicht des Arbeitgebers vor Diskriminierung. Bei Bias-Risiko dokumentieren, wie er gemindert wird.');
+
+  const bvPunkte = [];
+  if (leistungsErfassung) bvPunkte.push('Welche Daten werden über Mitarbeitende erhoben, gespeichert, ausgewertet?');
+  bvPunkte.push('Zweckbindung: Wofür werden KI-Ausgaben verwendet, wofür nicht?');
+  bvPunkte.push('Transparenz: Wie erfahren Mitarbeitende, dass und wie KI eingesetzt wird?');
+  if (a.automatisierungsgrad === 'vollautomatisch') bvPunkte.push('Recht auf menschliche Entscheidung in arbeitsrechtlich relevanten Fällen');
+  bvPunkte.push('Schulungsangebot, Beschwerdekanal, Eskalationspfad');
+  bvPunkte.push('Evaluation nach 6 und 12 Monaten — was bleibt, was wird angepasst?');
+
+  return `${briefingHeader('betriebsrat')}${briefingSchwaechen(a)}
+## Worum geht es
+Im Bereich **${a.bereich || '—'}** soll eine KI-Lösung eingeführt werden: ${a.problem_text || '—'}
+**Wer ist betroffen:** ${labelize(NUTZER_LABELS, a.nutzer).join(', ') || '—'}
+**Wie arbeitet die KI:** ${autoGrad}
+
+## Mitarbeiterbezug
+${internBetroffen ? '· Mitarbeitende werden direkt mit dem System arbeiten oder von seinen Ausgaben betroffen sein.' : '· Mitarbeitende sind nicht primär adressiert.'}
+${leistungsErfassung ? '· Es werden Leistungs- oder Verhaltensdaten erhoben oder ausgewertet (Klicks, Outputs, Bewertungen, Beschäftigungs-Daten).' : ''}
+${(a.daten_arten||[]).includes('kommunikation') ? '· Kommunikationsinhalte (E-Mail-Texte, Chats, Anfragen) werden verarbeitet — Mitarbeitende sind hier persönlich betroffen.' : ''}
+
+## Mitbestimmungspflichten
+${mitbestimmung.length ? mitbestimmung.map(m => `· ${m}`).join('\n\n') : '· Auf Basis der vorliegenden Antworten keine offensichtliche Mitbestimmungspflicht — bei Zweifeln prüfen lassen.'}
+
+## Was eine Betriebsvereinbarung regeln sollte
+${bvPunkte.map(p => `· ${p}`).join('\n')}
+
+## Transparenz für Beschäftigte
+· Information vor Einführung: Was kommt, warum, wer entscheidet was
+· Kennzeichnung im Alltag: Wann ist eine KI-Antwort eine KI-Antwort?
+· Schulung: Praxisnah, ergebnisoffen — nicht als reine „Tool-Einführung"
+· Beschwerdekanal: Niedrigschwellig erreichbar, ohne Stigma
+
+## Statushinweis
+Aktueller Stand der Einbindung des Betriebsrats laut Use-Case-Bewertung: **${ {ja:'als relevant erkannt',unklar:'noch unklar',nein:'als nicht betroffen eingestuft'}[a.gov_betriebsrat] || 'unklar'}**.
+${briefingFooter()}`;
+}
+
+function generateBriefing(adressat) {
+  if (!adressat || !['management','compliance','betriebsrat'].includes(adressat)) adressat = 'management';
+  const a = state.answers;
+  const risk = state.riskClass;
+  const briefing = adressat === 'management' ? briefingManagement(a, risk)
+                 : adressat === 'compliance' ? briefingCompliance(a, risk)
+                 : briefingBetriebsrat(a, risk);
+
+  state.briefing = briefing;
+  saveState();
+  const out = document.getElementById('briefingOutput');
+  const copyBtn = document.getElementById('copyBtn');
+  out.style.display = 'block';
+  out.textContent = briefing;
+  copyBtn.style.display = 'inline-flex';
+}
+
+// ─────────────────────────────────────────────
+// INIT — bei vorhandener Session ggf. Resume-Banner zeigen
+// ─────────────────────────────────────────────
+function init() {
+  const stored = loadStateFromStorage();
+  if (stored && stored.answers && Object.keys(stored.answers).length > 0) {
+    showResumeBanner(stored);
+  } else {
+    render();
+  }
+}
+let _pendingResume = null;
+function showResumeBanner(stored) {
+  _pendingResume = stored;
+  const savedDate = stored.savedAt ? new Date(stored.savedAt).toLocaleString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'unbekannt';
+  const stepLabel = STEPS[stored.step]?.label || 'Ergebnis';
+  const mc = document.getElementById('mainCard');
+  mc.innerHTML = `
+    <div class="card-step">Vorherige Eingabe gefunden</div>
+    <h2>Möchtest du fortsetzen?</h2>
+    <p class="card-sub">In diesem Browser ist eine Bewertung gespeichert (zuletzt: ${savedDate}, Stand: ${stepLabel}). Sie liegt nur lokal, wurde nirgends übertragen.</p>
+    <div class="btn-row" style="margin-top:24px">
+      <button class="btn btn-primary" onclick="confirmResume()">Fortsetzen</button>
+      <button class="btn btn-secondary" onclick="clearStoredState();_pendingResume=null;render()">Neu beginnen (gespeicherte Daten löschen)</button>
+    </div>`;
+}
+function confirmResume() {
+  if (_pendingResume) resumeFromStorage(_pendingResume);
+  _pendingResume = null;
+}
+function resetEvaluation() {
+  const wasPersisting = state.persistEnabled;
+  if (wasPersisting && !confirm('Auch die im Browser gespeicherte Bewertung löschen? (OK = ja, Abbrechen = nur neu anfangen, Speicherung behalten)')) {
+    state.step = 0; state.answers = {}; state.riskClass = null; state.briefing = '';
+    saveState();
+    render();
+    return;
+  }
+  if (wasPersisting) clearStoredState();
+  state.step = 0; state.answers = {}; state.riskClass = null; state.briefing = ''; state.persistEnabled = false;
+  render();
+}
+init();
+</script>
+</body>
+</html>
