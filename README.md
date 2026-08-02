@@ -1,6 +1,8 @@
 # KI Use-Case Bewertung & AI Act Klassifizierung
 
-Browserbasiertes Werkzeug zur strukturierten Erstbewertung von KI-Vorhaben — mit Wertbeitrag-Vorprüfung, EU-AI-Act-Risikoklassifizierung, GPAI-Einordnung, DSGVO-Hinweisen und stakeholder-fertigem Briefing. Läuft offline im Browser, keine Daten verlassen das Gerät.
+**👉 Direkt starten: https://poeppi.github.io/ki-usecase-bewertung/** — im Browser, ohne Installation. Alle Eingaben bleiben auf dem eigenen Gerät.
+
+Das Werkzeug beantwortet in sieben Schritten eine Frage: Lohnt sich dieses KI-Vorhaben — und was verlangt das Recht dafür? Es kombiniert eine Wertbeitrag-Vorprüfung mit der Risikoklassifizierung nach EU AI Act, einer GPAI-Einordnung, DSGVO-Hinweisen und einem Briefing für Stakeholder.
 
 Entwickelt von **Yvonne Pöppelbaum** · AI Adoption · Regulatory Intelligence
 Stand: August 2026 · Version 1.2 · MIT-Lizenz
@@ -49,7 +51,7 @@ Stand: August 2026 · Version 1.2 · MIT-Lizenz
 | 6 | Governance | Sponsor, Legal, Betriebsrat, Human Oversight |
 | 7 | Ergebnis | Klassifizierung, Geltungsdaten-Zeitleiste, nächste Schritte, Briefing, Export |
 
-Bei einer Verbots-Treffer in Schritt 4 wird direkt zum Ergebnis gesprungen — die nachfolgenden Fragen erübrigen sich.
+Bei einem Verbotstreffer in Schritt 4 springt das Tool direkt zum Ergebnis — die nachfolgenden Fragen erübrigen sich.
 
 ---
 
@@ -68,7 +70,7 @@ Bei einer Verbots-Treffer in Schritt 4 wird direkt zum Ergebnis gesprungen — d
 
 GPAI-Status wird parallel zur Klassifikation erhoben und löst eigene Hinweise aus, unabhängig von der Risikoklasse.
 
-DSGVO Art. 22 wird heuristisch geprüft: Vollautomatisch + personenbezogene Daten + Wirkung auf Personen → eigener Alert mit Schutzpflichten.
+DSGVO Art. 22 prüft das Tool heuristisch: Vollautomatisch + personenbezogene Daten + Wirkung auf Personen → eigener Alert mit Schutzpflichten.
 
 ---
 
@@ -76,24 +78,21 @@ DSGVO Art. 22 wird heuristisch geprüft: Vollautomatisch + personenbezogene Date
 
 ### Sofort starten
 
-**Online:** https://poeppi.github.io/ki-usecase-bewertung/ — direkt im
-  Browser, keine Installation. Alle Eingaben bleiben lokal im Browser.
+**Online:** https://poeppi.github.io/ki-usecase-bewertung/ — der schnellste Weg.
 
-  **Offline:** Datei `index.html` herunterladen und im Browser öffnen
-  (Doppelklick genügt — kein Server, keine Installation).
+**Offline:** Datei `index.html` herunterladen und per Doppelklick im Browser öffnen — kein Server, keine Installation.
 
-  Dann: sieben Schritte durchlaufen, Ergebnis exportieren (JSON oder Markdown),
-  Briefing erstellen, drucken.
+Dann: sieben Schritte durchlaufen, Ergebnis exportieren (JSON oder Markdown), Briefing erstellen, drucken.
 
 ### Stakeholder-Briefing
 
-Auf der Ergebnisseite den Button „Briefing erstellen" klicken. Das Briefing wird sofort aus den Antworten zusammengebaut, kann kopiert werden und ist im Markdown-Export enthalten.
+Auf der Ergebnisseite den Button „Briefing erstellen" klicken. Das Tool baut das Briefing sofort aus den Antworten zusammen; es lässt sich kopieren und ist im Markdown-Export enthalten.
 
 Das Briefing ist deterministisch generiert — kein API-Aufruf, keine Halluzinationen, kein Datenabfluss. Wer das gleiche Eingabeset eingibt, bekommt das gleiche Briefing.
 
 ### Versionierung
 
-Bewertungen als JSON exportieren und in Git versionieren. Das ermöglicht nachvollziehbare Entwicklung eines Use Cases über mehrere Iterationen und ist als Dokumentationsspur für Governance-Zwecke nützlich.
+Bewertungen als JSON exportieren und in Git versionieren. So lässt sich nachvollziehen, wie sich ein Use Case über mehrere Iterationen entwickelt — als Dokumentationsspur für Governance.
 
 ---
 
@@ -101,7 +100,7 @@ Bewertungen als JSON exportieren und in Git versionieren. Das ermöglicht nachvo
 
 ### Eine Datei
 
-`usecase_bewertung.html` — eigenständige Datei ohne Build-Prozess, ohne Server, ohne externe Abhängigkeiten. Es wird nichts von externen Servern geladen, auch keine Schriften: Das Tool nutzt IBM Plex, falls lokal installiert bzw. als woff2-Dateien in `fonts/` abgelegt (vorbereitete `@font-face`-Blöcke im CSS), sonst die Systemschrift.
+`index.html` — eigenständige Datei ohne Build-Prozess, ohne Server, ohne externe Abhängigkeiten. Es wird nichts von externen Servern geladen, auch keine Schriften: Das Tool nutzt IBM Plex, falls lokal installiert bzw. als woff2-Dateien in `fonts/` abgelegt (vorbereitete `@font-face`-Blöcke im CSS), sonst die Systemschrift.
 
 ### Technischer Aufbau
 
@@ -199,7 +198,8 @@ MIT-Lizenz — siehe [`LICENSE`](LICENSE). Nutzung, Anpassung und Weitergabe sin
 ## Versionshistorie
 
 **v1.2 — August 2026**
-- Rechtsstand auf Verordnung (EU) 2026/1744 („Digital Omnibus on AI") gehoben: Geltungsdaten-Zeitleiste aktualisiert (Hochrisiko Anhang III → 02.12.2027, Anhang I → 02.08.2028, Art. 50 unverändert 02.08.2026 mit viermonatiger Übergangsfrist für Bestandssysteme bei Abs. 2; Governance und Sanktionen seit 02.08.2025 korrekt eingeordnet)
+- Rechtsstand auf Verordnung (EU) 2026/1744 („Digital Omnibus on AI") gehoben — Geltungsdaten-Zeitleiste aktualisiert: Hochrisiko Anhang III ab 02.12.2027, Anhang I ab 02.08.2028, Art. 50 unverändert seit 02.08.2026 mit viermonatiger Übergangsfrist für Bestandssysteme bei Abs. 2
+- Governance und Sanktionen in der Zeitleiste korrekt beim 02.08.2025 einsortiert
 - Zwei neue Verbotsfragen in Schritt 4: Art. 5 Abs. 1 lit. ba (nicht-einvernehmliche Intimdarstellungen) und lit. bb (CSAM-Erzeugung), inklusive Klassifizierungslogik und Export
 - Hinweis zu den Art.-6-Leitlinien aktualisiert: Kommissions-Entwurf vom 19.05.2026, noch nicht final
 - Google-Fonts-CDN entfernt: Schriften laufen über lokale `@font-face`-Blöcke (vorbereitet) mit Systemschrift-Fallback — kein externer Request mehr
