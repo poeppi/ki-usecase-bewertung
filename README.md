@@ -76,10 +76,14 @@ DSGVO Art. 22 wird heuristisch geprüft: Vollautomatisch + personenbezogene Date
 
 ### Sofort starten
 
-1. Datei `usecase_bewertung.html` herunterladen
-2. Im Browser öffnen (Doppelklick genügt — kein Server, keine Installation)
-3. Sieben Schritte durchlaufen
-4. Ergebnis exportieren (JSON oder Markdown), Briefing erstellen, drucken
+**Online:** https://poeppi.github.io/ki-usecase-bewertung/ — direkt im
+  Browser, keine Installation. Alle Eingaben bleiben lokal im Browser.
+
+  **Offline:** Datei `index.html` herunterladen und im Browser öffnen
+  (Doppelklick genügt — kein Server, keine Installation).
+
+  Dann: sieben Schritte durchlaufen, Ergebnis exportieren (JSON oder Markdown),
+  Briefing erstellen, drucken.
 
 ### Stakeholder-Briefing
 
