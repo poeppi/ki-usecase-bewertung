@@ -271,7 +271,7 @@ input[type="text"]:focus, textarea:focus, select:focus {
 .alert strong { font-weight: 600; }
 
 /* ── Buttons ── */
-.btn-row { display: flex; gap: 12px; margin-top: 32px; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 .btn {
   padding: 11px 24px;
   border-radius: 7px;
@@ -281,6 +281,7 @@ input[type="text"]:focus, textarea:focus, select:focus {
   cursor: pointer;
   border: none;
   transition: all .15s;
+  white-space: nowrap;
 }
 .btn-primary { background: var(--teal-700); color: var(--white); }
 .btn-primary:hover { background: var(--teal-900); }
@@ -1902,7 +1903,7 @@ function renderErgebnis() {
           const istAktiv = heute >= m.datum;
           const datumStr = m.datum.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
           return `<div style="padding:6px 0;border-bottom:1px solid #ececec;display:flex;gap:10px">
-            <span style="font-family:monospace;font-size:12px;color:${istAktiv ? '#166534' : '#999'};min-width:90px">${datumStr}</span>
+            <span style="font-family:monospace;font-size:12px;color:${istAktiv ? '#166534' : '#999'};min-width:100px;flex-shrink:0;white-space:nowrap">${datumStr}</span>
             <span style="color:${istAktiv ? '#0a1530' : '#666'}">${istAktiv ? '✓ aktiv' : '⏳ ab dann'} — ${m.label}</span>
           </div>`;
         }).join('')}
