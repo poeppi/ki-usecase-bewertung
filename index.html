@@ -115,6 +115,10 @@ body {
 .beispiel-btn:hover, .beispiel-btn:focus-visible { background: var(--teal-50); border-color: var(--teal-700); }
 .beispiel-hinweis { font-size: 13px; color: var(--slate-500); margin: -8px 0 16px; }
 
+/* ── Zurück-Link oben in der Karte (Muster GOV.UK: Back link über der Überschrift) ── */
+.back-link { display: inline-block; font-size: 14px; color: var(--teal-700); text-decoration: underline; text-underline-offset: 3px; margin-bottom: 14px; }
+.back-link:hover, .back-link:focus-visible { color: var(--teal-900); }
+
 /* ── Layout ── */
 .app { display: flex; flex: 1; max-width: 1100px; margin: 0 auto; width: 100%; padding: 32px 24px; gap: 28px; }
 
@@ -390,6 +394,7 @@ input[type="text"]:focus, textarea:focus, select:focus {
   .disclaimer { font-size: 10px !important; color: #555 !important; }
   .field .hint { color: #666 !important; }
   .art-link { text-decoration: none !important; }
+  .back-link { display: none !important; }
 }
 </style>
 </head>
@@ -942,12 +947,48 @@ function getNextSteps(risk, a) {
 // ─────────────────────────────────────────────
 // RENDER
 // ─────────────────────────────────────────────
+// Browser-Historie: jeder Schrittwechsel ist ein Eintrag, damit der Zurück-Button des Browsers zum
+// vorherigen Schritt führt statt aus dem Tool heraus. Vor- und Zurück stellen den Schritt wieder her.
+let _histPop = false, _histLast = '';
+const BACK_LINK = '<a href="#" class="back-link" onclick="goBack(); return false;">← Zurück</a>';
+function viewKey(v) { return v.view + ':' + (v.intro ? 'intro' : v.step); }
+function viewState(extra) { return Object.assign({ view: 'step', step: state.step, intro: !!state.showIntro, blocked: !!state.blocked }, extra || {}); }
+function pushView(v) {
+  if (_histPop || typeof history === 'undefined' || !history.pushState) return;
+  const key = viewKey(v);
+  if (key === _histLast) return;
+  try { if (_histLast === '') history.replaceState(v, ''); else history.pushState(v, ''); } catch (e) {}
+  _histLast = key;
+}
+function onPopState(e) {
+  const v = e && e.state;
+  if (!v || !v.view) return;
+  syncFelder();
+  _histPop = true;
+  try {
+    state.showIntro = !!v.intro;
+    state.blocked = !!v.blocked;
+    let step = typeof v.step === 'number' ? v.step : 0;
+    if (step === 6 && !state.riskClass) step = 5; // Ergebnis ohne Bewertung gibt es nicht
+    state.step = step;
+    let view = v.view;
+    if (view === 'plausi') {
+      const w = pruefeWidersprueche(state.answers);
+      if (w.length) { state.step = 5; renderPlausibilitaet(w, w.map(x => x.id).join(',')); }
+      else { view = 'step'; render(); }
+    } else render();
+    _histLast = viewKey(viewState({ view }));
+    window.scrollTo(0, 0);
+  } finally { _histPop = false; }
+}
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('popstate', onPopState);
+
 function render() {
   saveState();
   renderAlterung();
   renderNav();
   renderSummary();
-  if (state.showIntro) { renderIntro(); return; }
+  if (state.showIntro) { renderIntro(); pushView(viewState()); return; }
   const s = state.step;
   if (s === 0) renderWertbeitrag();
   else if (s === 1) renderProblem();
@@ -956,6 +997,7 @@ function render() {
   else if (s === 4) renderHochrisiko();
   else if (s === 5) renderGovernance();
   else if (s === 6) renderErgebnis();
+  pushView(viewState());
 }
 
 // ─────────────────────────────────────────────
@@ -1138,6 +1180,7 @@ function renderSummary() {
 function card(stepNum, title, sub, html, btnLabel, onNext, backBtn = true) {
   const mc = document.getElementById('mainCard');
   mc.innerHTML = `
+    ${backBtn && stepNum > 1 ? BACK_LINK : ''}
     <div class="card-step">Schritt ${stepNum} von ${STEPS.length} · ${STEPS[stepNum-1].label}</div>
     <h2>${title}</h2>
     <p class="card-sub">${verlinkeArtikel(sub)}</p>
@@ -1752,6 +1795,7 @@ function saveGovernance() {
 function renderPlausibilitaet(w, sig) {
   const mc = document.getElementById('mainCard');
   mc.innerHTML = verlinkeArtikel(`
+    <a href="#" class="back-link" onclick="render(); return false;">← Zurück</a>
     <div class="card-step">Vor dem Ergebnis · Plausibilität</div>
     <h2>Bitte prüfen: ${w.length === 1 ? 'eine Angabe passt' : w.length + ' Angaben passen'} nicht zusammen</h2>
     <p class="card-sub">Das Tool hat Ihre Antworten gegeneinander geprüft. Die folgenden Paare widersprechen sich oder sind ungewöhnlich. Korrigieren Sie, was falsch war, oder bestätigen Sie, dass die Angaben stimmen. Bestätigte Hinweise erscheinen im Ergebnis, im Export und im Briefing und senken die Belastbarkeit der Einstufung.</p>
@@ -1760,6 +1804,7 @@ function renderPlausibilitaet(w, sig) {
       <button class="btn btn-secondary" onclick="render()">← Zurück zu Governance</button>
       <button class="btn btn-primary" onclick="bestaetigePlausibilitaet('${sig}')">Angaben stimmen, zum Ergebnis</button>
     </div>`);
+  pushView(viewState({ view: 'plausi', step: 5 }));
   window.scrollTo(0, 0);
 }
 function bestaetigePlausibilitaet(sig) { state.plausiBestaetigt = sig; saveGovernance(); }
@@ -1781,6 +1826,7 @@ function renderErgebnis() {
 
   const mc = document.getElementById('mainCard');
   mc.innerHTML = verlinkeArtikel(`
+    ${BACK_LINK}
     <div class="card-step">Schritt 7 von 7 · Ergebnis</div>
     <h2>Bewertungsergebnis</h2>
     <p class="card-sub">Auf Basis der eingegebenen Informationen ergibt sich folgende Klassifizierung.</p>
