@@ -1166,6 +1166,7 @@ document.addEventListener('keydown', e => {
 function goBack() {
   if (state.step <= 0) return;
   syncFelder();
+  if (state.step === 6) state.riskClass = null; // altes Ergebnis nicht neben den Fragen stehen lassen
   state.step = (state.step === 6 && state.blocked) ? 3 : state.step - 1;
   state.blocked = false; state.beispiel = null;
   render();
