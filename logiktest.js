@@ -1,7 +1,7 @@
 // Logiktest für usecase_bewertung.html (v1.3) ohne Browser.
 // Aufruf:  node logiktest.js usecase_bewertung.html
 // Mit simuliertem Datum:  FAKE_TODAY=2026-12-03 node logiktest.js usecase_bewertung.html
-// Prüft Klassifizierung, nächste Schritte, gerenderte Hinweise, Exporte und Briefing (Testfälle T1 bis T26 aus kafk-check-veroeffentlichung-2026-08-01.md, soweit ohne Klicken prüfbar).
+// Prüft Klassifizierung, nächste Schritte, gerenderte Hinweise, Exporte und Briefing (Testfälle T1 bis T28 aus kafk-check-veroeffentlichung-2026-08-01.md, soweit ohne Klicken prüfbar).
 const fs=require('fs');
 const html=fs.readFileSync(process.argv[2],'utf8');
 const js=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n');
