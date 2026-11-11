@@ -81,11 +81,21 @@ Greift die Ausnahme nach Art. 6 Abs. 3, tragen Ergebnis, Exporte und alle drei B
 
 **Nächste Schritte** kommen in drei Kategorien mit Aufwandsklasse: Pflicht (rechtliche Pflicht oder Voraussetzung), Empfohlen (fachlich sinnvoll), Projekt (Projekt-Hygiene); Aufwand Stunden, Tage, Wochen oder Extern. Die Ergebnisseite zeigt fünf Schritte, der Rest ist einklappbar. Rollenpflichten nach Art. 16 bis 27 erscheinen nur bei Hochrisiko.
 
+**Plausibilität** (`pruefeWidersprueche()`): Vor dem Ergebnis prüft das Tool die Antworten gegeneinander, zum Beispiel Bereich HR ohne Anhang III Nr. 4, externe Nutzer:innen ohne personenbezogene Daten, Standardtool mit Rolle Anbieter, Art.-6-Ausnahme bei vollautomatischer Entscheidung, Beschäftigung ohne Betriebsrat. Passt etwas nicht zusammen, erscheint eine Zwischenkarte „Bitte prüfen" mit Sprung zum betroffenen Schritt. Wer bestätigt, bekommt das Ergebnis; die Hinweise stehen dann in Ergebnis, Exporten und Briefings.
+
+**Belastbarkeit der Einstufung** (`belastbarkeit()`): hoch, mittel oder niedrig, neben der Risikoklasse, in der Seitenleiste, in beiden Exporten und in allen Briefings. Abzüge gibt es für Antworten „unklar", für die beanspruchte Ausnahme nach Art. 6 Abs. 3, für Selbsteinschätzungen nach Art. 50 (offensichtliche KI-Natur, menschliche Prüfung), für Schwächen der Vorprüfung und für bestätigte Plausibilitätshinweise. Das Tool sagt damit selbst, wie weit man ihm trauen darf.
+
+**Belege** (`verlinkeArtikel()`): Jeder Verweis auf einen Artikel oder Anhang des EU AI Act in Hinweisen, Schritten und Ergebnis führt zur Artikelseite im AI Act Service Desk der Kommission (konsolidierte Fassung, englisch). Verweise auf DSGVO, BetrVG und AGG bleiben ohne Link; der Markdown-Export nennt zusätzlich die deutsche Fassung auf EUR-Lex.
+
+**Selbstalterung** (`RECHTSSTAND`, `rechtsstandVeraltet()`): Liegt das Systemdatum mehr als sechs Monate nach dem Rechtsstand, zeigt das Tool über der Bewertung einen Hinweis und schreibt ihn in Exporte und Briefings. Bei jedem Rechtsstand-Update `RECHTSSTAND` und `RECHTSSTAND_LABEL` anpassen.
+
 ---
 
 ## Nutzung
 
 ### Sofort starten
+
+Auf der Startseite „Über das Tool" lassen sich drei geprüfte Fälle laden (Mail-Assistent, Bewerbungserfassung mit Art.-6-Ausnahme, Kundenservice-Chatbot). Ein Klick führt zum vollständigen Ergebnis, über „Zurück" ist jeder Schritt einsehbar und änderbar. Die Fälle stammen aus der Beispielsammlung für Workshops.
 
 Beim ersten Aufruf zeigt das Tool die Seite „Über das Tool": was es kann, wie es funktioniert, wo die Grenzen liegen und was beim Menschen bleibt. Der Link im Kopfbereich führt jederzeit dorthin zurück.
 
@@ -123,6 +133,11 @@ DATEN_ARTEN_LABELS         — Slug-zu-Label-Map (Datenkategorien)
 
 classifyRisk(a)            — Klassifizierungslogik mit Art. 6(3)-Filter
 getNextSteps(risk, a)      — Handlungsempfehlungen, abhängig von Klasse, Daten, GPAI, Governance
+pruefeWidersprueche(a)     — Plausibilität: Antworten gegeneinander prüfen, Zwischenkarte vor dem Ergebnis
+belastbarkeit(a, risk)     — Stufe hoch/mittel/niedrig mit Gründen
+verlinkeArtikel(text)      — Artikel- und Anhangverweise auf den AI Act Service Desk verlinken
+rechtsstandVeraltet()      — Selbstalterung, Hinweis sechs Monate nach RECHTSSTAND
+BEISPIELE / ladeBeispiel() — drei vorbefüllte Fälle für die Startseite
 
 renderWertbeitrag()        — Schritt 1
 renderProblem()            — Schritt 2
@@ -141,7 +156,7 @@ generateBriefing()         — Template-basiertes Stakeholder-Briefing, lokal
 
 ```json
 {
-  "meta": { "tool": "KI Use-Case Bewertung", "version": "1.3", "exported_at": "..." },
+  "meta": { "tool": "KI Use-Case Bewertung", "version": "1.3", "exported_at": "...", "rechtsstand": "November 2026", "rechtsstand_hinweis": null },
   "wertbeitrag": { "wertbeitrag": "...", "reifegrad": "...", "alternative": "..." },
   "problem": { "text": "...", "bereich": "...", "nutzer": ["..."], "kpi": "..." },
   "daten": { "personenbezogen": "ja|nein", "arten": ["..."], "verfuegbar": "..." },
@@ -153,6 +168,8 @@ generateBriefing()         — Template-basiertes Stakeholder-Briefing, lokal
     "gpai": { "genutzt": "...", "rolle": "..." },
     "risikoklasse": { "class": "...", "label": "...", "beschreibung": "..." }
   },
+  "belastbarkeit": { "stufe": "hoch|mittel|niedrig", "gruende": ["..."] },
+  "plausibilitaet": { "hinweise": [{ "titel": "...", "text": "..." }], "bestaetigt": false },
   "governance": { "sponsor": "...", "legal": "...", "betriebsrat": "...", "oversight": "..." },
   "naechste_schritte": [{ "kategorie": "Pflicht|Empfohlen|Projekt", "aufwand": "Stunden|Tage|Wochen|Extern", "text": "..." }],
   "briefing": "..."
@@ -182,7 +199,7 @@ generateBriefing()         — Template-basiertes Stakeholder-Briefing, lokal
 
 ### Keine automatische Aktualisierung
 
-Statische HTML-Datei. Wenn sich Rechtslage ändert (neue Leitlinien, Digital Omnibus, Delegierte Rechtsakte), muss die Klassifizierungslogik manuell angepasst werden. Versionsstand im Meta-Block des JSON-Exports.
+Statische HTML-Datei. Wenn sich Rechtslage ändert (neue Leitlinien, Digital Omnibus, Delegierte Rechtsakte), muss die Klassifizierungslogik manuell angepasst werden. Versionsstand und Rechtsstand im Meta-Block des JSON-Exports. Sechs Monate nach dem Rechtsstand zeigt das Tool von selbst einen Hinweis, dass die Grundlage geprüft werden muss.
 
 ### Kein Backend, keine Synchronisation
 
@@ -222,6 +239,7 @@ MIT-Lizenz — siehe [`LICENSE`](LICENSE). Nutzung, Anpassung und Weitergabe sin
 - `logiktest.js`: Node-Testskript ohne Browser (`node logiktest.js index.html`), prüft Klassifizierung, Hinweise, Exporte, Briefing und Zeitleisten; `FAKE_TODAY=2026-12-03` simuliert den Stichtag
 - Nach kritischer Prüfung aus KI-Manager- und KMU-Sicht (11.11.2026): Plausibilitätsschranke für Art. 6 Abs. 3 in Beschäftigung, Bildung und wesentlichen Diensten (Begründungspflicht, Warnhinweis mit Anhang-III-Wortlaut); Vorbehalt der Ausnahme in Ergebnis, Exporten und allen Briefings; Rollenpflichten Art. 16 bis 27 nur noch bei Hochrisiko; KI-Inhalte lösen „Begrenzt" nur noch bei Anbieterrolle, Deepfakes oder Texten zu Themen öffentlichen Interesses aus; nächste Schritte mit Kategorie (Pflicht, Empfohlen, Projekt) und Aufwandsklasse, fünf sichtbar, Rest einklappbar; Schwächen-Heuristik erkennt Zahlen und Begründungen; Nummerierung im Management-Briefing dynamisch; GPAI-Anpassung (Prompting, RAG) nicht mehr als Anbieterwechsel nach Art. 25 dargestellt
 - Startseite mit ausklappbarem Beispiel „Kundenservice-Chatbot in sieben Schritten"
+- Zweite Runde (11.11.2026): Plausibilitätsprüfung mit Zwischenkarte vor dem Ergebnis (15 Regeln); Belastbarkeit der Einstufung in drei Stufen mit Gründen; Artikel- und Anhangverweise als Links auf den AI Act Service Desk der Kommission; Selbstalterung mit Hinweis sechs Monate nach dem Rechtsstand; „Beispiel laden" mit drei geprüften Fällen auf der Startseite; „Zurück" auf der Ergebnisseite; 152 Prüfungen in `logiktest.js` (T1 bis T26), 154 mit simuliertem Datum 01.06.2027
 
 **v1.2 — August 2026**
 - Rechtsstand auf Verordnung (EU) 2026/1744 („Digital Omnibus on AI") gehoben — Geltungsdaten-Zeitleiste aktualisiert: Hochrisiko Anhang III ab 02.12.2027, Anhang I ab 02.08.2028, Art. 50 unverändert seit 02.08.2026 mit viermonatiger Übergangsfrist für Bestandssysteme bei Abs. 2
