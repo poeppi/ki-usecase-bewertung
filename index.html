@@ -75,6 +75,12 @@ body {
 .intro-human { background: var(--white); border: 1.5px solid var(--teal-700); }
 .intro-task { margin-top: 18px; padding: 14px 18px; border: 1px dashed var(--teal-500); border-radius: 8px; font-size: 15px; line-height: 1.6; }
 .intro-task strong { color: var(--teal-700); }
+.intro-beispiel { margin-top: 18px; border: 1px solid var(--slate-100); border-radius: 8px; padding: 12px 18px; background: var(--white); }
+.intro-beispiel summary { cursor: pointer; font-weight: 600; color: var(--teal-700); font-size: 16px; }
+.intro-beispiel ol { padding-left: 22px; margin-top: 10px; }
+.intro-beispiel li { font-size: 15px; line-height: 1.6; margin-bottom: 8px; }
+.intro-beispiel-lead { font-size: 15px; line-height: 1.6; margin-top: 10px; }
+.intro-ergebnis { display: inline-block; font-weight: 600; padding: 1px 10px; border-radius: 999px; background: var(--amber-100); color: #78350f; border: 1.5px solid var(--amber-600); }
 @media (max-width: 720px) { .header { flex-wrap: wrap; } .header-link { margin-left: 0; } }
 
 /* ── Layout ── */
@@ -279,6 +285,16 @@ input[type="text"]:focus, textarea:focus, select:focus {
 .result-item p { font-size: 14px; line-height: 1.5; }
 
 .next-steps { list-style: none; }
+.ns-tags { display: block; margin-bottom: 3px; }
+.ns-tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .02em; padding: 1px 8px; border-radius: 999px; background: var(--slate-100); color: var(--slate-500); margin-right: 6px; }
+.ns-tag-pflicht { background: var(--amber-100); color: #78350f; }
+.ns-tag-empfohlen { background: var(--teal-100); color: var(--teal-900); }
+.ns-num.ns-pflicht { background: var(--amber-100); color: #78350f; }
+.ns-num.ns-projekt { background: var(--slate-100); color: var(--slate-500); }
+.ns-more { display: block; padding: 6px 0; }
+.ns-more summary { cursor: pointer; color: var(--teal-700); font-weight: 600; padding: 6px 0; }
+.ns-more ul { margin-top: 4px; }
+.ns-legende { display: block; padding-top: 10px; }
 .next-steps li {
   display: flex;
   align-items: flex-start;
@@ -494,6 +510,67 @@ const ROLLE_HINTS = {
 };
 
 // ─────────────────────────────────────────────
+// ART. 6 ABS. 3: zentrale Prüfung der Ausnahme (Logik, Anzeige, Export und Briefing nutzen dieselbe Funktion)
+// ─────────────────────────────────────────────
+const HR_FIELDS = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'];
+// Bereiche, in denen Anhang III die Bewertung von Personen ausdrücklich nennt (Nr. 3 Bildung, Nr. 4 Beschäftigung, Nr. 5 wesentliche Dienste):
+// hier greift die Ausnahme nur mit schriftlicher Begründung.
+const ART6_SENSIBEL = ['hr_beschaeftigung','hr_bildung','hr_services'];
+const ART6_BEGRUENDUNG_MIN = 80;
+const ART6_VORBEHALT = 'Diese Einstufung gilt nur unter der Ausnahme nach Art. 6 Abs. 3: ohne dokumentierte Selbsteinschätzung und Registrierung gilt Hochrisiko.';
+function art6Ausnahme(a) {
+  const hrActive = HR_FIELDS.some(f => a[f]);
+  const genutzt = ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]);
+  const sensibel = ART6_SENSIBEL.some(k => a[k]);
+  const begruendung = (a.art6_begruendung || '').trim();
+  const begruendungOk = !sensibel || begruendung.length >= ART6_BEGRUENDUNG_MIN;
+  const greift = hrActive && genutzt && a.art6_profiling === 'nein' && begruendungOk;
+  return { hrActive, genutzt, sensibel, begruendung, begruendungOk, greift };
+}
+
+// ─────────────────────────────────────────────
+// NÄCHSTE SCHRITTE: Kategorie und Aufwandsklasse pro Schritt
+// Kategorie: Pflicht (rechtliche Pflicht oder Voraussetzung), Empfohlen (fachlich sinnvoll), Projekt (Projekt-Hygiene)
+// Aufwand: Stunden (unter einem Tag intern), Tage (mehrere Tage intern), Wochen (eigenes Teilprojekt), Extern (Beratung oder Prüfung von außen)
+// ─────────────────────────────────────────────
+const SCHRITT_KAT_ORDER = ['Pflicht','Empfohlen','Projekt'];
+const SCHRITT_KAT_HINT = { Pflicht:'rechtliche Pflicht oder Voraussetzung', Empfohlen:'fachlich empfohlen, keine unmittelbare Pflicht', Projekt:'Projekt-Hygiene' };
+const SCHRITT_LEGENDE = 'Pflicht = rechtliche Pflicht oder Voraussetzung · Empfohlen = fachlich sinnvoll, keine unmittelbare Pflicht · Projekt = Projekt-Hygiene. Aufwand: Stunden = unter einem Tag intern · Tage = mehrere Tage intern · Wochen = eigenes Teilprojekt · Extern = Beratung oder Prüfung von außen.';
+function schritt(kat, aufwand, text) { return `[${kat}|${aufwand}] ${text}`; }
+function parseSchritt(s) {
+  const m = /^\[(Pflicht|Empfohlen|Projekt)\|(Stunden|Tage|Wochen|Extern)\] /.exec(s);
+  return m ? { kat: m[1], aufwand: m[2], text: s.slice(m[0].length) } : { kat: 'Empfohlen', aufwand: '', text: s };
+}
+function sortiereSchritte(list) {
+  return list.map((s, i) => Object.assign(parseSchritt(s), { i }))
+             .sort((x, y) => (SCHRITT_KAT_ORDER.indexOf(x.kat) - SCHRITT_KAT_ORDER.indexOf(y.kat)) || (x.i - y.i));
+}
+function gruppiereSchritte(list) {
+  const g = { Pflicht: [], Empfohlen: [], Projekt: [] };
+  sortiereSchritte(list).forEach(it => g[it.kat].push(it));
+  return g;
+}
+function renderSchritteHTML(list, sichtbarMax = 5) {
+  const items = sortiereSchritte(list);
+  const li = (it, n) => `<li><div class="ns-num ns-${it.kat.toLowerCase()}" title="${SCHRITT_KAT_HINT[it.kat]}">${n}</div><span><span class="ns-tags"><span class="ns-tag ns-tag-${it.kat.toLowerCase()}">${it.kat}</span>${it.aufwand ? `<span class="ns-tag">Aufwand: ${it.aufwand}</span>` : ''}</span>${it.text}</span></li>`;
+  const sichtbar = items.slice(0, sichtbarMax), rest = items.slice(sichtbarMax);
+  return sichtbar.map((it, i) => li(it, i + 1)).join('')
+    + (rest.length ? `<li class="ns-more"><details><summary>Weitere ${rest.length} Schritte anzeigen</summary><ul class="next-steps">${rest.map((it, i) => li(it, sichtbarMax + i + 1)).join('')}</ul></details></li>` : '')
+    + `<li class="ns-legende"><p class="hint">${SCHRITT_LEGENDE}</p></li>`;
+}
+function schritteMarkdown(list) {
+  const g = gruppiereSchritte(list);
+  let md = '';
+  SCHRITT_KAT_ORDER.forEach(k => {
+    if (!g[k].length) return;
+    md += `### ${k} (${SCHRITT_KAT_HINT[k]})\n\n`;
+    g[k].forEach((it, i) => md += `${i + 1}. ${it.text}${it.aufwand ? ` *(Aufwand: ${it.aufwand})*` : ''}\n`);
+    md += `\n`;
+  });
+  return md + `*${SCHRITT_LEGENDE}*\n\n`;
+}
+
+// ─────────────────────────────────────────────
 // AI ACT CLASSIFICATION LOGIC
 // ─────────────────────────────────────────────
 function classifyRisk(a) {
@@ -523,10 +600,8 @@ function classifyRisk(a) {
   const hrFields = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'];
   const hrActive = hrFields.some(f => a[f]);
   if (hrActive) {
-    const ausnahmeGenutzt = ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]);
-    const profiling = a.art6_profiling === 'ja';
-    // Ausnahme greift nur, wenn mindestens ein Tatbestand UND kein Profiling
-    if (ausnahmeGenutzt && !profiling) {
+    // Ausnahme greift nur mit Tatbestand, ohne Profiling und in sensiblen Bereichen nur mit Begründung (siehe art6Ausnahme)
+    if (art6Ausnahme(a).greift) {
       // System fällt aus Hochrisiko raus, weiter mit Art. 50 Prüfung unten
     } else {
       return { class: 'hoch', label: 'Hochrisiko', emoji: '⚠️',
@@ -536,8 +611,11 @@ function classifyRisk(a) {
   // Limited risk (Art. 50 Transparenzpflichten)
   // Interaktion: nur dann transparenz-pflichtig, wenn KI-Natur nicht offensichtlich ist
   const interaktionPflicht = a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja';
-  // GenAI: immer Kennzeichnungspflicht (Art. 50 Abs. 2 für KI-Output, Abs. 4 für Deepfakes)
-  const genaiPflicht = a.transparenz_genai === 'ja';
+  // GenAI: Art. 50 Abs. 2 trifft den Anbieter; Betreiber haben eigene Pflichten nur bei Deepfakes (Abs. 4 UAbs. 1)
+  // und bei veröffentlichten KI-Texten zu Themen öffentlichen Interesses ohne menschliche Prüfung (Abs. 4 UAbs. 2)
+  const rollen = a.aivo_rolle || [];
+  const textPflicht = a.art50_text_oeffentlich === 'ja' && a.art50_text_redaktion !== 'ja';
+  const genaiPflicht = a.transparenz_genai === 'ja' && (rollen.includes('anbieter') || a.art50_deepfake === 'ja' || textPflicht);
   if (interaktionPflicht || genaiPflicht) {
     return { class: 'begrenzt', label: 'Begrenztes Risiko', emoji: '💬',
       desc: 'Der Use Case unterliegt Transparenzpflichten nach Art. 50 EU AI Act. Nutzer:innen müssen über die KI-Interaktion oder die KI-Erzeugung von Inhalten informiert werden.' };
@@ -548,104 +626,107 @@ function classifyRisk(a) {
 
 function getNextSteps(risk, a) {
   const base = [];
-  const hrFields = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'];
-  const hrActive = hrFields.some(f => a[f]);
-  const ausnahmeGenutzt = ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]);
-  const art6GreiftWirklich = hrActive && ausnahmeGenutzt && a.art6_profiling === 'nein';
+  const art6GreiftWirklich = art6Ausnahme(a).greift;
 
   if (risk.class === 'kein-ki') {
-    base.push('AI-VO-Pflichten greifen voraussichtlich nicht — Selbsteinschätzung dokumentieren, falls die Klassifizierung später hinterfragt wird.');
-    if (a.daten_personenbezogen === 'ja') base.push('DSGVO bleibt: Verzeichnis von Verarbeitungstätigkeiten (Art. 30), DSFA-Schwellenwertprüfung (Art. 35) bei Risiko für Betroffene.');
-    if (a.gov_betriebsrat === 'ja' || a.gov_betriebsrat === 'unklar') base.push('§ 87 BetrVG bleibt unabhängig vom AI Act bei Mitarbeiterüberwachung.');
-    base.push('Bei Modell-Wechsel oder Erweiterung um lernende Komponenten: Klassifikation neu prüfen.');
+    base.push(schritt('Empfohlen','Stunden','AI-VO-Pflichten greifen voraussichtlich nicht — Selbsteinschätzung dokumentieren, falls die Klassifizierung später hinterfragt wird.'));
+    if (a.daten_personenbezogen === 'ja') base.push(schritt('Pflicht','Stunden','DSGVO bleibt: Verzeichnis von Verarbeitungstätigkeiten (Art. 30), DSFA-Schwellenwertprüfung (Art. 35) bei Risiko für Betroffene.'));
+    if (a.gov_betriebsrat === 'ja' || a.gov_betriebsrat === 'unklar') base.push(schritt('Pflicht','Tage','§ 87 BetrVG bleibt unabhängig vom AI Act bei Mitarbeiterüberwachung.'));
+    base.push(schritt('Projekt','Stunden','Bei Modell-Wechsel oder Erweiterung um lernende Komponenten: Klassifikation neu prüfen.'));
     return base;
   }
   if (risk.class === 'verboten') {
-    base.push('Use Case in dieser Form nicht weiterverfolgen — Rechtsverstöße möglich.');
-    base.push('Legal und Datenschutzbeauftragte umgehend informieren.');
-    base.push('Alternativ-Ansatz ohne die verbotene KI-Praktik prüfen.');
+    base.push(schritt('Pflicht','Stunden','Use Case in dieser Form nicht weiterverfolgen — Rechtsverstöße möglich.'));
+    base.push(schritt('Pflicht','Stunden','Legal und Datenschutzbeauftragte umgehend informieren.'));
+    base.push(schritt('Projekt','Tage','Alternativ-Ansatz ohne die verbotene KI-Praktik prüfen.'));
     return base;
   }
   // Rollenspezifische Hinweise
   const rollen = a.aivo_rolle || [];
-  if (rollen.includes('anbieter')) {
-    base.push('Als Anbieter: Pflichten nach Art. 16 ff. (Konformitätsbewertung, technische Dokumentation, Qualitätsmanagementsystem, CE-Kennzeichnung bei Hochrisiko). Für das Qualitätsmanagementsystem nach Art. 17 gibt es seit Oktober 2026 die erste harmonisierte Norm EN 18286:2026 mit Konformitätsvermutung; sie baut auf ISO/IEC 42001 oder ISO 9001 auf. Die übrigen Normen des Normungsauftrags stehen noch aus.');
+  if (rollen.includes('anbieter') && risk.class === 'hoch') {
+    base.push(schritt('Pflicht','Wochen','Als Anbieter: Pflichten nach Art. 16 ff. (Konformitätsbewertung, technische Dokumentation, Qualitätsmanagementsystem, CE-Kennzeichnung bei Hochrisiko). Für das Qualitätsmanagementsystem nach Art. 17 gibt es seit Oktober 2026 die erste harmonisierte Norm EN 18286:2026 mit Konformitätsvermutung; sie baut auf ISO/IEC 42001 oder ISO 9001 auf. Die übrigen Normen des Normungsauftrags stehen noch aus.'));
   }
   if (rollen.includes('betreiber') && risk.class === 'hoch') {
-    base.push('Als Betreiber eines Hochrisiko-Systems: Pflichten nach Art. 26 (zweckkonforme Nutzung, Eingabedaten-Qualität, Human Oversight, Logging-Aufbewahrung, Information der Beschäftigten).');
+    base.push(schritt('Pflicht','Tage','Als Betreiber eines Hochrisiko-Systems: Pflichten nach Art. 26 (zweckkonforme Nutzung, Eingabedaten-Qualität, Human Oversight, Logging-Aufbewahrung, Information der Beschäftigten).'));
   }
-  if (rollen.includes('importeur')) {
-    base.push('Als Importeur: Konformitätsprüfung vor Inverkehrbringen (Art. 23), CE-Kennzeichnung und Anbieter-Dokumentation auf Vollständigkeit prüfen.');
+  if (rollen.includes('importeur') && risk.class === 'hoch') {
+    base.push(schritt('Pflicht','Tage','Als Importeur: Konformitätsprüfung vor Inverkehrbringen (Art. 23), CE-Kennzeichnung und Anbieter-Dokumentation auf Vollständigkeit prüfen.'));
   }
-  if (rollen.includes('haendler')) {
-    base.push('Als Händler: Sorgfaltspflicht nach Art. 24 (CE-Kennzeichnung, Anbieter-Identifikation, Konformität sichten).');
+  if (rollen.includes('haendler') && risk.class === 'hoch') {
+    base.push(schritt('Pflicht','Tage','Als Händler: Sorgfaltspflicht nach Art. 24 (CE-Kennzeichnung, Anbieter-Identifikation, Konformität sichten).'));
+  }
+  if (risk.class !== 'hoch' && rollen.length) {
+    base.push(schritt('Empfohlen','Stunden','Rollenpflichten nach Art. 16 bis 27 (Konformitätsbewertung, QMS, CE-Kennzeichnung, Art. 26) gelten nur für Hochrisiko-Systeme. Für diese Einstufung bleiben: Art. 50 (Transparenz), Art. 4 (KI-Kompetenz) und die DSGVO.'));
   }
   if (risk.class === 'hoch') {
-    base.push('Konformitätsbewertung nach Art. 43 EU AI Act einleiten (Anhang-III-System).');
-    base.push('Technische Dokumentation nach Anhang IV erstellen.');
-    base.push('Risikomanagement-System nach Art. 9 aufsetzen.');
-    base.push('Daten-Governance und Bias-Assessment durchführen (Art. 10).');
-    base.push('Human Oversight-Mechanismus definieren (Art. 14).');
-    base.push('Registrierung in der EU-Datenbank vorbereiten (Art. 49, Art. 71).');
-    if (a.daten_personenbezogen === 'ja') base.push('DSFA (DSGVO Art. 35) parallel durchführen.');
-    if (a.gov_betriebsrat === 'ja' || a.gov_betriebsrat === 'unklar') base.push('Betriebsrat frühzeitig einbinden (§ 87 Abs. 1 Nr. 6 BetrVG prüfen).');
-    if (a.reifegrad === 'eigenbau') base.push('KI-Reallabor prüfen: Die Bundesnetzagentur betreibt ein Reallabor für Tests unter behördlicher Begleitung; bis 02.08.2027 braucht jeder Mitgliedstaat mindestens eines (Art. 57).');
+    base.push(schritt('Pflicht','Wochen','Konformitätsbewertung nach Art. 43 EU AI Act einleiten (Anhang-III-System).'));
+    base.push(schritt('Pflicht','Wochen','Technische Dokumentation nach Anhang IV erstellen.'));
+    base.push(schritt('Pflicht','Wochen','Risikomanagement-System nach Art. 9 aufsetzen.'));
+    base.push(schritt('Pflicht','Wochen','Daten-Governance und Bias-Assessment durchführen (Art. 10).'));
+    base.push(schritt('Pflicht','Tage','Human Oversight-Mechanismus definieren (Art. 14).'));
+    base.push(schritt('Pflicht','Tage','Registrierung in der EU-Datenbank vorbereiten (Art. 49, Art. 71).'));
+    if (a.daten_personenbezogen === 'ja') base.push(schritt('Pflicht','Tage','DSFA (DSGVO Art. 35) parallel durchführen.'));
+    if (a.gov_betriebsrat === 'ja' || a.gov_betriebsrat === 'unklar') base.push(schritt('Pflicht','Tage','Betriebsrat frühzeitig einbinden (§ 87 Abs. 1 Nr. 6 BetrVG prüfen).'));
+    if (a.reifegrad === 'eigenbau') base.push(schritt('Empfohlen','Extern','KI-Reallabor prüfen: Die Bundesnetzagentur betreibt ein Reallabor für Tests unter behördlicher Begleitung; bis 02.08.2027 braucht jeder Mitgliedstaat mindestens eines (Art. 57).'));
   }
   // Art. 6 Abs. 3 Ausnahme greift: war Anhang III, fällt aber raus
   if (art6GreiftWirklich) {
-    base.push('Selbsteinschätzung nach Art. 6 Abs. 3 schriftlich dokumentieren (Art. 6 Abs. 4) — Begründung, warum kein erhebliches Risiko für Gesundheit, Sicherheit oder Grundrechte besteht.');
-    base.push('System in der EU-Datenbank registrieren (Art. 49 Abs. 2) — auch ausgenommene Anhang-III-Systeme sind registrierungspflichtig.');
-    base.push('Marktaufsichtsbehörde kann die Einschätzung jederzeit überprüfen — Selbsteinschätzung muss belastbar sein. In Deutschland ist das für die meisten Anhang-III-Bereiche die Bundesnetzagentur.');
-    base.push('Im Zweifel: Ausnahme-Anwendung durch Legal prüfen lassen, bevor das System in Betrieb geht.');
+    base.push(schritt('Pflicht','Tage','Selbsteinschätzung nach Art. 6 Abs. 3 schriftlich dokumentieren (Art. 6 Abs. 4) — Begründung, warum kein erhebliches Risiko für Gesundheit, Sicherheit oder Grundrechte besteht.'));
+    base.push(schritt('Pflicht','Stunden','System in der EU-Datenbank registrieren (Art. 49 Abs. 2) — auch ausgenommene Anhang-III-Systeme sind registrierungspflichtig.'));
+    base.push(schritt('Empfohlen','Stunden','Marktaufsichtsbehörde kann die Einschätzung jederzeit überprüfen — Selbsteinschätzung muss belastbar sein. In Deutschland ist das für die meisten Anhang-III-Bereiche die Bundesnetzagentur.'));
+    base.push(schritt('Empfohlen','Extern','Im Zweifel: Ausnahme-Anwendung durch Legal prüfen lassen, bevor das System in Betrieb geht.'));
   }
-  if (risk.class === 'begrenzt') {
+  {
     const ag = a.automatisierungsgrad;
     // Interaktion mit Personen (Art. 50 Abs. 1)
     if (a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja') {
       if (ag === 'vollautomatisch' || ag === 'unklar' || !ag) {
-        base.push('Transparenzpflicht nach Art. 50 Abs. 1 umsetzen: Empfänger:innen klar kennzeichnen, dass sie mit einem KI-System interagieren — z. B. durch Hinweis vor Beginn der Konversation.');
+        base.push(schritt('Pflicht','Stunden','Transparenzpflicht nach Art. 50 Abs. 1 umsetzen: Empfänger:innen klar kennzeichnen, dass sie mit einem KI-System interagieren — z. B. durch Hinweis vor Beginn der Konversation.'));
       } else {
-        base.push('Automatisierungsgrad unterstützend: Die externe Kennzeichnungspflicht nach Art. 50 Abs. 1 entfällt voraussichtlich, da der Mensch die Ausgabe prüft. Interne KI-Nutzungsrichtlinie dokumentieren und Mitarbeitende informieren.');
+        base.push(schritt('Empfohlen','Stunden','Automatisierungsgrad unterstützend: Die externe Kennzeichnungspflicht nach Art. 50 Abs. 1 entfällt voraussichtlich, da der Mensch die Ausgabe prüft. Interne KI-Nutzungsrichtlinie dokumentieren und Mitarbeitende informieren.'));
       }
     } else if (a.transparenz_interaktion === 'ja' && a.art50_offensichtlich === 'ja') {
-      base.push('KI-Interaktion ist als offensichtlich eingestuft (Art. 50 Abs. 1 Satz 2): Diese Einstufung dokumentieren — Marktaufsicht kann die Bewertung prüfen. Bei Zweifeln im Gestaltungsprozess explizit kennzeichnen.');
+      base.push(schritt('Empfohlen','Stunden','KI-Interaktion ist als offensichtlich eingestuft (Art. 50 Abs. 1 Satz 2): Diese Einstufung dokumentieren — Marktaufsicht kann die Bewertung prüfen. Bei Zweifeln im Gestaltungsprozess explizit kennzeichnen.'));
     }
     // GenAI-Output (Art. 50 Abs. 2)
     if (a.transparenz_genai === 'ja') {
-      base.push('KI-generierte Inhalte technisch maschinenlesbar als künstlich kennzeichnen (Art. 50 Abs. 2) — Provider-Pflicht. Bei Eigenentwicklung: Kennzeichnung im Output verankern, bei Drittanbieter: Kennzeichnung des Anbieters dokumentieren und prüfen, ob er den Verhaltenskodex zur Transparenz KI-generierter Inhalte (Abschnitt 1) unterzeichnet hat. Systeme, die vor dem 02.08.2026 auf dem Markt waren, müssen die Markierung bis 02.12.2026 umsetzen.');
+      if (rollen.includes('anbieter')) {
+        base.push(schritt('Pflicht','Tage','KI-generierte Inhalte technisch maschinenlesbar als künstlich kennzeichnen (Art. 50 Abs. 2, Anbieterpflicht): Markierung im Output verankern (Wasserzeichen, Metadaten) und die Umsetzung nach dem Verhaltenskodex zur Transparenz KI-generierter Inhalte (Abschnitt 1) dokumentieren. Systeme, die vor dem 02.08.2026 auf dem Markt waren, müssen die Markierung bis 02.12.2026 umsetzen.'));
+      } else {
+        base.push(schritt('Empfohlen','Stunden','Die maschinenlesbare Markierung KI-generierter Inhalte (Art. 50 Abs. 2) ist Pflicht des Modellanbieters, nicht des Betreibers. Dokumentieren, welcher Anbieter eingesetzt wird und ob er den Verhaltenskodex zur Transparenz KI-generierter Inhalte (Abschnitt 1) unterzeichnet hat. Eigene Pflichten entstehen bei Deepfakes (Art. 50 Abs. 4 UAbs. 1) und bei veröffentlichten Texten zu Themen öffentlichen Interesses (Abs. 4 UAbs. 2).'));
+      }
     }
     // Deepfakes (Art. 50 Abs. 4)
     if (a.art50_deepfake === 'ja') {
-      base.push('Deepfake-Kennzeichnung nach Art. 50 Abs. 4: synthetische Inhalte sichtbar als künstlich oder manipuliert markieren. Ausnahme nur bei offensichtlich künstlerischen, satirischen oder fiktionalen Werken — dann angemessene Offenlegung, die das Werk nicht beeinträchtigt. Definitionen und Beispiele: Kommissions-Leitlinien zu Art. 50 (20.07.2026); Gestaltung nach dem Verhaltenskodex zur Transparenz KI-generierter Inhalte (Abschnitt 2, EU-Icons).');
+      base.push(schritt('Pflicht','Stunden','Deepfake-Kennzeichnung nach Art. 50 Abs. 4: synthetische Inhalte sichtbar als künstlich oder manipuliert markieren. Ausnahme nur bei offensichtlich künstlerischen, satirischen oder fiktionalen Werken — dann angemessene Offenlegung, die das Werk nicht beeinträchtigt. Definitionen und Beispiele: Kommissions-Leitlinien zu Art. 50 (20.07.2026); Gestaltung nach dem Verhaltenskodex zur Transparenz KI-generierter Inhalte (Abschnitt 2, EU-Icons).'));
     }
     // KI-Texte zu Themen öffentlichen Interesses (Art. 50 Abs. 4 UAbs. 2)
     if (a.art50_text_oeffentlich === 'ja') {
       if (a.art50_text_redaktion === 'ja') {
-        base.push('Ausnahme nach Art. 50 Abs. 4 UAbs. 2 dokumentieren: Wer prüft die KI-generierten Texte vor der Veröffentlichung, wer trägt die redaktionelle Verantwortung? Fällt die menschliche Prüfung weg, greift die Kennzeichnungspflicht sofort.');
+        base.push(schritt('Empfohlen','Stunden','Ausnahme nach Art. 50 Abs. 4 UAbs. 2 dokumentieren: Wer prüft die KI-generierten Texte vor der Veröffentlichung, wer trägt die redaktionelle Verantwortung? Fällt die menschliche Prüfung weg, greift die Kennzeichnungspflicht sofort.'));
       } else {
-        base.push('KI-generierte Texte zu Themen öffentlichen Interesses sichtbar als KI-generiert kennzeichnen (Art. 50 Abs. 4 UAbs. 2, Betreiberpflicht, seit 02.08.2026 ohne Übergangsfrist). Kennzeichnung nach den Kommissions-Leitlinien zu Art. 50 (20.07.2026) und dem Verhaltenskodex zur Transparenz KI-generierter Inhalte (Abschnitt 2) gestalten, z. B. mit den EU-Icons.');
+        base.push(schritt('Pflicht','Stunden','KI-generierte Texte zu Themen öffentlichen Interesses sichtbar als KI-generiert kennzeichnen (Art. 50 Abs. 4 UAbs. 2, Betreiberpflicht, seit 02.08.2026 ohne Übergangsfrist). Kennzeichnung nach den Kommissions-Leitlinien zu Art. 50 (20.07.2026) und dem Verhaltenskodex zur Transparenz KI-generierter Inhalte (Abschnitt 2) gestalten, z. B. mit den EU-Icons.'));
       }
     }
     // Biometrie / Emotion (Art. 50 Abs. 3) — nur wenn nicht schon durch Art. 5 verboten
     if ((a.daten_arten||[]).includes('biometrie') && a.verboten_emotion !== 'ja' && a.verboten_bio_kategorisierung !== 'ja') {
-      base.push('Hinweis nach Art. 50 Abs. 3 prüfen: Werden Personen biometrisch kategorisiert oder Emotionen erkannt (außerhalb der Verbote nach Art. 5), müssen sie informiert werden.');
+      base.push(schritt('Empfohlen','Stunden','Hinweis nach Art. 50 Abs. 3 prüfen: Werden Personen biometrisch kategorisiert oder Emotionen erkannt (außerhalb der Verbote nach Art. 5), müssen sie informiert werden.'));
     }
-    if (a.daten_personenbezogen === 'ja') base.push('DSFA-Schwellenwertprüfung nach DSGVO Art. 35 durchführen.');
+    if (a.daten_personenbezogen === 'ja' && risk.class !== 'hoch') base.push(schritt('Pflicht','Tage','DSFA-Schwellenwertprüfung nach DSGVO Art. 35 durchführen.'));
   }
-  base.push('KI-Kompetenz nach Art. 4: Maßnahmen dokumentieren, mit denen die beteiligten Mitarbeitenden den Umgang mit dem System lernen. Seit dem 27.07.2026 lautet die Pflicht „fördern" statt „sicherstellen"; sie gilt weiter für Anbieter und Betreiber, ein nachweisbares Kompetenzniveau verlangt sie nicht.');
+  base.push(schritt('Pflicht','Stunden','KI-Kompetenz nach Art. 4: Maßnahmen dokumentieren, mit denen die beteiligten Mitarbeitenden den Umgang mit dem System lernen. Seit dem 27.07.2026 lautet die Pflicht „fördern" statt „sicherstellen"; sie gilt weiter für Anbieter und Betreiber, ein nachweisbares Kompetenzniveau verlangt sie nicht.'));
   if (risk.class === 'hoch' || risk.class === 'begrenzt' || art6GreiftWirklich) {
-    base.push('Zuständige Aufsicht in Deutschland kennen: Seit 29.07.2026 (KI-MIG) ist die Bundesnetzagentur zentrale Marktüberwachungs-, Koordinierungs- und Beschwerdestelle, unter anderem für Personalmanagement, Bildung und kritische Infrastruktur; die BaFin bleibt im Finanzsektor zuständig, die Landesmedienanstalten für Medien. Einstieg: KI-Compliance-Kompass der Bundesnetzagentur (unverbindlich) und AI Act Service Desk der Kommission.');
+    base.push(schritt('Empfohlen','Stunden','Zuständige Aufsicht in Deutschland kennen: Seit 29.07.2026 (KI-MIG) ist die Bundesnetzagentur zentrale Marktüberwachungs-, Koordinierungs- und Beschwerdestelle, unter anderem für Personalmanagement, Bildung und kritische Infrastruktur; die BaFin bleibt im Finanzsektor zuständig, die Landesmedienanstalten für Medien. Einstieg: KI-Compliance-Kompass der Bundesnetzagentur (unverbindlich) und AI Act Service Desk der Kommission.'));
   }
   if (risk.class === 'minimal') {
-    base.push('Freiwilligen Verhaltenskodex gemäß EU AI Act Art. 95 prüfen.');
-    if (a.daten_personenbezogen === 'ja') base.push('DSFA-Schwellenwertprüfung nach DSGVO Art. 35 durchführen.');
+    base.push(schritt('Empfohlen','Stunden','Freiwilligen Verhaltenskodex gemäß EU AI Act Art. 95 prüfen.'));
   }
   // Diskriminierungsrisiko — quer zu allen Risikoklassen außer „verboten"
   const biasRisiko = (a.bias_direkt === 'ja' || a.bias_indirekt === 'ja' || a.bias_indirekt === 'unklar');
   if (biasRisiko && a.bias_pruefung !== 'ja' && risk.class !== 'verboten') {
-    base.push('Bias-Prüfung in den Entwicklungs- oder Beschaffungsprozess aufnehmen — bei Hochrisiko verpflichtend nach Art. 10 EU AI Act, unabhängig davon greift das AGG bei Beschäftigung und Geschäftsleben mit der Allgemeinheit.');
+    base.push(schritt(risk.class === 'hoch' ? 'Pflicht' : 'Empfohlen','Tage','Bias-Prüfung in den Entwicklungs- oder Beschaffungsprozess aufnehmen — bei Hochrisiko verpflichtend nach Art. 10 EU AI Act, unabhängig davon greift das AGG bei Beschäftigung und Geschäftsleben mit der Allgemeinheit.'));
     if (a.bias_indirekt === 'unklar') {
-      base.push('Proxy-Diskriminierung prüfen: welche Schutzmerkmale sind aus Namen, Adressen, Kaufverhalten oder anderen Datenpunkten ableitbar?');
+      base.push(schritt('Empfohlen','Tage','Proxy-Diskriminierung prüfen: welche Schutzmerkmale sind aus Namen, Adressen, Kaufverhalten oder anderen Datenpunkten ableitbar?'));
     }
   }
   // DSGVO Art. 22 — automatisierte Einzelentscheidung
@@ -653,28 +734,28 @@ function getNextSteps(risk, a) {
   const wirkungAufPersonen = (a.nutzer||[]).some(n => ['extern_kunden','extern_dritte','behoerden'].includes(n))
                               || a.hr_beschaeftigung || a.hr_services || a.hr_bildung;
   if (a.automatisierungsgrad === 'vollautomatisch' && a.daten_personenbezogen === 'ja' && wirkungAufPersonen && risk.class !== 'verboten') {
-    base.push('DSGVO Art. 22 prüfen: Vollautomatische Entscheidung mit personenbezogenen Daten und Wirkung auf Personen — möglicherweise „solely automated decision" mit Rechtswirkung. Pflicht: menschliche Intervention ermöglichen, Anfechtungsrecht, Standpunkt darlegen, Information vor der Entscheidung. Rechtsgrundlage nach Art. 22 Abs. 2 (Vertrag, Rechtsvorschrift, ausdrückliche Einwilligung) klären.');
+    base.push(schritt('Pflicht','Extern','DSGVO Art. 22 prüfen: Vollautomatische Entscheidung mit personenbezogenen Daten und Wirkung auf Personen — möglicherweise „solely automated decision" mit Rechtswirkung. Pflicht: menschliche Intervention ermöglichen, Anfechtungsrecht, Standpunkt darlegen, Information vor der Entscheidung. Rechtsgrundlage nach Art. 22 Abs. 2 (Vertrag, Rechtsvorschrift, ausdrückliche Einwilligung) klären.'));
   }
   // GPAI-spezifische Hinweise — gelten quer zu allen Risikoklassen außer „verboten"
   if (a.gpai_genutzt === 'ja') {
     if (a.gpai_rolle === 'deployer') {
-      base.push('GPAI-Deployer: AGB und Nutzungsbedingungen des Modell-Anbieters prüfen, insbesondere zu Datenflüssen, Zweckbindung und EU-Datenresidenz.');
+      base.push(schritt('Empfohlen','Stunden','GPAI-Deployer: AGB und Nutzungsbedingungen des Modell-Anbieters prüfen, insbesondere zu Datenflüssen, Zweckbindung und EU-Datenresidenz.'));
     }
     if (a.gpai_rolle === 'modifizierer') {
-      base.push('GPAI-Modifizierung: Schwelle „substantielle Modifikation" nach Art. 25 juristisch klären — bei Provider-Wechsel greifen Pflichten Art. 53 ff. (Dokumentation, Trainingsdaten-Zusammenfassung, Urheberrechts-Compliance).');
+      base.push(schritt('Empfohlen','Stunden','GPAI-Anpassung: Prompting, RAG, Systemintegration und leichtes Fine-tuning machen Sie nicht zum Anbieter des Modells. Nach den Kommissions-Leitlinien zum Anwendungsbereich der GPAI-Pflichten gilt das erst bei erheblichen Veränderungen des Modells; Art. 25 (Anbieterwechsel) betrifft nur Hochrisiko-Systeme. Dokumentieren, was verändert wurde; bei eigenem Training oder umfangreichem Fine-tuning die Pflichten nach Art. 53 prüfen.'));
     }
     if (a.gpai_rolle === 'provider') {
-      base.push('GPAI-Provider: Pflichten nach Art. 53 erfüllen (technische Dokumentation, Trainingsdaten-Zusammenfassung nach AI-Office-Vorlage, Urheberrechts-Compliance). Bei systemischem Risiko (10²⁵ FLOPs, Art. 51) zusätzlich Art. 55. Den GPAI Code of Practice (10.07.2025) als anerkannten Konformitätspfad prüfen.');
+      base.push(schritt('Pflicht','Wochen','GPAI-Provider: Pflichten nach Art. 53 erfüllen (technische Dokumentation, Trainingsdaten-Zusammenfassung nach AI-Office-Vorlage, Urheberrechts-Compliance). Bei systemischem Risiko (10²⁵ FLOPs, Art. 51) zusätzlich Art. 55. Den GPAI Code of Practice (10.07.2025) als anerkannten Konformitätspfad prüfen.'));
     }
   }
   if (a.gpai_genutzt === 'unklar') {
-    base.push('GPAI-Klärung: Identifizieren, welches Foundation Model wo eingesetzt wird, und in welcher Rolle (reiner Nutzer, Anpassung, eigenes Training). Ohne diese Klärung bleibt die regulatorische Verantwortlichkeit offen.');
+    base.push(schritt('Projekt','Stunden','GPAI-Klärung: Identifizieren, welches Foundation Model wo eingesetzt wird, und in welcher Rolle (reiner Nutzer, Anpassung, eigenes Training). Ohne diese Klärung bleibt die regulatorische Verantwortlichkeit offen.'));
   }
   // Universal next steps
-  if (!a.gov_sponsor || a.gov_sponsor === 'nein') base.push('Executive Sponsor benennen — ohne benannte Verantwortung im Management bleiben Ressourcenfragen und Eskalationen offen.');
-  if (!a.gov_legal || a.gov_legal === 'nein') base.push('Legal und Datenschutz einbinden, bevor Daten beschafft werden.');
-  base.push('Use-Case-Zieldefinition mit messbaren KPIs schärfen (SMART-Kriterien).');
-  base.push('PoC-Scope eng definieren, Zeitrahmen max. 4–8 Wochen.');
+  if (!a.gov_sponsor || a.gov_sponsor === 'nein') base.push(schritt('Projekt','Stunden','Executive Sponsor benennen — ohne benannte Verantwortung im Management bleiben Ressourcenfragen und Eskalationen offen.'));
+  if (!a.gov_legal || a.gov_legal === 'nein') base.push(schritt('Projekt','Stunden','Legal und Datenschutz einbinden, bevor Daten beschafft werden.'));
+  base.push(schritt('Projekt','Stunden','Use-Case-Zieldefinition mit messbaren KPIs schärfen (SMART-Kriterien).'));
+  base.push(schritt('Projekt','Tage','PoC-Scope eng definieren, Zeitrahmen max. 4–8 Wochen.'));
   return base;
 }
 
@@ -748,6 +829,22 @@ function renderIntro() {
     </div>
 
     <div class="intro-task"><strong>Bevor Sie starten:</strong> Schreiben Sie in einem Satz auf, welches konkrete Problem das Vorhaben löst und woran Sie den Erfolg messen. Schritt 1 fragt genau danach, und eine klare Antwort hier spart später die meiste Zeit.</div>
+
+
+    <details class="intro-beispiel">
+      <summary>Beispiel: Kundenservice-Chatbot in sieben Schritten</summary>
+      <p class="intro-beispiel-lead">Ein Handelsunternehmen mit 80 Beschäftigten will Standardfragen auf der Website automatisch beantworten lassen. So läuft die Bewertung, so sieht das Ergebnis aus.</p>
+      <ol>
+        <li><strong>Wertbeitrag:</strong> „Rund 500 von 1.200 Anfragen pro Monat sind Standardfragen zu Öffnungszeiten, Lieferstatus und Retouren. Ziel: 40 Prozent davon ohne Mitarbeitende beantworten." Reifegrad: Anpassung (Standard-Chatbot einer Agentur mit Zugriff auf die eigenen FAQ). Geprüfte Alternative: „Ausführlichere FAQ-Seite; sie erreicht nur, wer sucht, 60 Prozent fragen trotzdem per Mail."</li>
+        <li><strong>Problemdefinition:</strong> Bereich Kundenservice, Nutzer:innen sind externe Kund:innen, Erfolgsziel „Anteil automatisch gelöster Anfragen", Automatisierungsgrad vollautomatisch. Rolle: Betreiber, dazu Anbieter, weil der Bot im Auftrag gebaut wird und unter dem eigenen Namen läuft (Art. 3 Nr. 3). Bei einem reinen Mietwidget des Herstellers wäre das Unternehmen nur Betreiber.</li>
+        <li><strong>Datenlage:</strong> Personenbezogene Daten ja (Kontaktdaten, Chatverläufe, Bestellnummern), verfügbar. Diskriminierungsrisiko: keines erkennbar.</li>
+        <li><strong>Verbotsprüfung:</strong> Alle zehn Praktiken nach Art. 5 treffen nicht zu.</li>
+        <li><strong>Hochrisiko, GPAI, Transparenz:</strong> Kein Anhang-III-Bereich. Foundation Model ja, Rolle Anpassung (RAG auf eigene Inhalte). Das System interagiert direkt mit Personen, und die KI-Natur ist nicht offensichtlich, weil das Widget „Service-Team" heißt. Es erzeugt Texte, aber keine Deepfakes und keine Texte zu Themen öffentlichen Interesses.</li>
+        <li><strong>Governance:</strong> Sponsor noch nicht benannt, Legal und Datenschutz noch nicht eingebunden, Betriebsrat nicht betroffen, menschliche Aufsicht nicht definiert.</li>
+        <li><strong>Ergebnis:</strong> <span class="intro-ergebnis">Begrenztes Risiko</span>. Auslöser: Interaktion ohne erkennbare KI-Natur (Art. 50 Abs. 1) und als Anbieter die maschinenlesbare Markierung der Antworten (Art. 50 Abs. 2). Pflichten: Chat als KI kennzeichnen (Stunden), Markierung im Output verankern (Tage), DSFA-Schwellenwert prüfen (Tage), Maßnahmen zur KI-Kompetenz dokumentieren (Stunden). Empfohlen: Rollenpflichten nach Art. 16 ff. gelten hier nicht, Zuständigkeit der Bundesnetzagentur kennen, Anpassung per RAG macht nicht zum Modellanbieter. Projekt: Sponsor benennen, Legal einbinden, Erfolgsziel schärfen, Pilot auf acht Wochen begrenzen.</li>
+      </ol>
+      <p class="intro-beispiel-lead"><strong>Was beim Menschen bleibt:</strong> die Entscheidung, ob das Widget weiter „Service-Team" heißen darf (dann braucht es den KI-Hinweis), die Schwellenwertprüfung mit dem Datenschutzbeauftragten, die Benennung des Sponsors. Das Briefing für das Management entsteht aus genau diesen Antworten.</p>
+    </details>
 
     <div class="btn-row" style="margin-top:24px">
       <button class="btn btn-primary" onclick="closeIntro()">${weiterLabel}</button>
@@ -1198,6 +1295,10 @@ function renderHochrisiko() {
     <div class="yn-group two">
       ${['ja','nein'].map(v => `<div class="yn-btn ${a.art6_profiling === v ? 'selected' : ''}" onclick="setYN('art6_profiling','${v}',this)">${v === 'ja' ? 'Ja — Profiling erfolgt' : 'Nein — kein Profiling'}</div>`).join('')}
     </div>
+    ${a.art6_profiling === 'nein' && art6Ausnahme(a).sensibel ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Plausibilität prüfen:</strong> Für Beschäftigung, Bildung und wesentliche Dienste nennt Anhang III die typischen Anwendungen ausdrücklich, zum Beispiel das Sichten, Filtern und Bewerten von Bewerbungen (Nr. 4 lit. a), die Bewertung von Lernergebnissen (Nr. 3) oder die Kreditwürdigkeitsprüfung (Nr. 5 lit. b). Wer Personen bewertet, reiht oder vorsortiert, betreibt Profiling; dann greift die Ausnahme nicht. In diesen Bereichen wendet das Tool die Ausnahme nur mit einer schriftlichen Begründung an (mindestens ${ART6_BEGRUENDUNG_MIN} Zeichen). Sie erscheint im Ergebnis, im Export und im Briefing.
+      <label for="f_art6_begruendung" style="display:block;margin-top:10px;font-size:13px;font-weight:600">Begründung: Welche eng begrenzte Aufgabe erledigt das System, und warum beeinflusst es keine Entscheidung über Personen?</label>
+      <textarea id="f_art6_begruendung" rows="3" oninput="state.answers.art6_begruendung=this.value; updateArt6Hint()" placeholder="z. B. Das System überträgt nur Kontaktdaten aus Bewerbungs-PDFs in die Bewerberdatenbank. Es bewertet, reiht oder filtert niemanden; alle Bewerbungen gehen vollständig an die Fachabteilung.">${a.art6_begruendung || ''}</textarea>
+      <div id="art6BegrHint" style="font-size:12px;margin-top:4px">${art6Ausnahme(a).begruendungOk ? '✓ Begründung ausreichend, die Ausnahme wird angewandt.' : 'Ohne ausreichende Begründung bleibt die Einstufung Hochrisiko.'}</div></div>` : ''}
     ${a.art6_profiling === 'nein' ? `<div class="alert alert-teal" style="margin-top:10px"><strong>Selbsteinschätzung nach Art. 6 Abs. 3:</strong><br>· Belastbar dokumentieren (Art. 6 Abs. 4): Aufgabenbeschreibung, Auswirkungsanalyse, Begründung warum kein erhebliches Risiko und kein wesentlicher Einfluss auf die Entscheidung besteht.<br>· In EU-Datenbank registrieren (Art. 49 Abs. 2) — auch ausgenommene Anhang-III-Systeme sind registrierungspflichtig.<br>· Aufsicht prüft die <strong>faktische Wirkung</strong>, nicht nur die Zweckbestimmung. Wer den Output „im Normalfall" übernimmt, fällt aus der Ausnahme.<br>· <em>Stand November 2026:</em> Die Kommission hat am 19.05.2026 Entwurfs-Leitlinien zur Hochrisiko-Einstufung nach Art. 6 Abs. 5 veröffentlicht; eine finale Fassung ist angekündigt, lag aber im November 2026 nicht vor. Auslegung daher weiterhin restriktiv halten und juristisch absichern.</div>` : ''}
     ${a.art6_profiling === 'ja' ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Ausnahme greift nicht:</strong> Bei Profiling bleibt das System hochriskant nach Anhang III. Vollständige Konformitätspflichten gelten.</div>` : ''}
   </div>` : ''}
@@ -1206,7 +1307,7 @@ function renderHochrisiko() {
     <label>Setzt der Use Case ein Foundation Model / GPAI ein? (z. B. ChatGPT, Claude, Gemini, Llama, Mistral)</label>
     <details class="hint-detail">
       <summary>Foundation Models wie ChatGPT oder Claude — eigene Pflichten je nachdem, wie Sie das Modell einsetzen.</summary>
-      <div class="detail-body">GPAI = General Purpose AI nach Art. 3 Nr. 63 EU AI Act. Reine Nutzung über API: Sie sind Deployer, Provider-Pflichten liegen beim Modell-Anbieter. Anpassung mit Fine-tuning oder substantieller Modifikation: Provider-Wechsel nach Art. 25 möglich. Eigenes Training: volle Provider-Pflichten Art. 53, bei systemischem Risiko zusätzlich Art. 55.</div>
+      <div class="detail-body">GPAI = General Purpose AI nach Art. 3 Nr. 63 EU AI Act. Reine Nutzung über API: Sie sind Deployer, Provider-Pflichten liegen beim Modell-Anbieter. Anpassung durch Prompting, RAG oder Fine-tuning: Sie bleiben Betreiber; Anbieter des Modells werden Sie erst bei erheblicher Veränderung des Modells (Kommissions-Leitlinien zu GPAI). Eigenes Training: volle Provider-Pflichten Art. 53, bei systemischem Risiko zusätzlich Art. 55.</div>
     </details>
     <div class="yn-group">
       ${[['ja','Ja'],['nein','Nein'],['unklar','Unklar / weiß nicht']].map(([v,l]) =>
@@ -1224,7 +1325,7 @@ function renderHochrisiko() {
         ].map(([v,l,sub]) => `<div class="yn-btn ${a.gpai_rolle === v ? 'selected' : ''}" onclick="setYN('gpai_rolle','${v}',this)">${l}<br><small style="font-weight:400;opacity:.7">${sub}</small></div>`).join('')}
       </div>
       ${a.gpai_rolle === 'deployer' ? `<div class="alert alert-teal" style="margin-top:10px"><strong>Deployer-Rolle:</strong> Provider-Pflichten Art. 53 ff. liegen beim Modell-Anbieter (OpenAI, Anthropic, Google etc.). Sie haben die normalen Deployer-Pflichten — Transparenz nach Art. 50, Human Oversight bei Hochrisiko-Einsatz, ggf. AGB-Compliance prüfen. Prüfen Sie, ob Ihr Modellanbieter den <a href="https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai" target="_blank" rel="noopener">GPAI Code of Practice</a> unterzeichnet hat (Stand 07.10.2026: 22 Anbieter, darunter Anthropic, Google, Microsoft, Mistral AI und OpenAI; xAI nur das Sicherheitskapitel; Meta nicht).</div>` : ''}
-      ${a.gpai_rolle === 'modifizierer' ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Achtung Provider-Wechsel (Art. 25):</strong> Bei substantieller Modifikation oder bei Inverkehrbringen unter eigenem Namen kann die Provider-Verantwortung auf Sie übergehen. Konsequenz: Pflichten nach Art. 53 (technische Dokumentation, Trainingsdaten-Zusammenfassung, Urheberrechts-Compliance-Policy). Der finale <a href="https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai" target="_blank" rel="noopener">GPAI Code of Practice</a> (10. Juli 2025) bietet einen von der Kommission anerkannten Konformitätspfad. Die Schwelle „substantiell" ist auslegungsbedürftig — im Zweifel juristisch prüfen lassen.</div>` : ''}
+      ${a.gpai_rolle === 'modifizierer' ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Anpassung ohne Anbieterwechsel:</strong> Prompting, RAG, Systemintegration und leichtes Fine-tuning machen Sie nicht zum Anbieter des Modells. Nach den <a href="https://digital-strategy.ec.europa.eu/en/policies/guidelines-gpai-providers" target="_blank" rel="noopener">Kommissions-Leitlinien zum Anwendungsbereich der GPAI-Pflichten</a> gilt das erst bei erheblichen Veränderungen des Modells. Art. 25 (Anbieterwechsel) betrifft nur Hochrisiko-Systeme. Dokumentieren Sie, was verändert wurde. Bei eigenem Training oder umfangreichem Fine-tuning: Pflichten nach Art. 53 prüfen, der <a href="https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai" target="_blank" rel="noopener">GPAI Code of Practice</a> (10. Juli 2025) ist der anerkannte Konformitätspfad.</div>` : ''}
       ${a.gpai_rolle === 'provider' ? `<div class="alert alert-red" style="margin-top:10px"><strong>Volle Provider-Pflichten:</strong><br>· <strong>Art. 53</strong> (alle GPAI-Provider): technische Dokumentation, Trainingsdaten-Zusammenfassung nach AI-Office-Vorlage, Urheberrechts-Compliance-Policy, EU-bevollmächtigter Vertreter.<br>· <strong>Art. 55</strong> (nur GPAI mit systemischem Risiko, gesetzliche Vermutung ab 10²⁵ FLOPs Trainingsaufwand nach Art. 51 Abs. 2): Modellbewertung, systemische Risikoanalyse, Adversarial Testing/Red-Teaming, Cybersecurity, Incident Reporting an das AI Office.<br>· Der <a href="https://digital-strategy.ec.europa.eu/en/policies/contents-code-gpai" target="_blank" rel="noopener">GPAI Code of Practice</a> gilt seit 10. Juli 2025 als „adäquates" freiwilliges Compliance-Instrument für Art. 53 und 55. Drei Kapitel: Transparenz, Urheberrecht, Sicherheit (letzteres nur für systemisches Risiko).<br>· Seit 02.08.2026 setzt das AI Office die GPAI-Pflichten durch: Modellbewertungen und Bußgeldverfahren nach der Durchführungsverordnung (EU) 2026/1755, Geldbußen bis 15 Mio. Euro oder 3 Prozent des weltweiten Jahresumsatzes.</div>` : ''}
     </div>` : ''}
     ${a.gpai_genutzt === 'unklar' ? `<div class="alert alert-amber" style="margin-top:10px"><strong>Klärungsbedarf:</strong> Bei „Unklar" zuerst beantworten: Welches Modell wird genutzt, wo läuft es, welcher Anbieter? Erst dann lässt sich die GPAI-Frage seriös einordnen.</div>` : ''}
@@ -1288,13 +1389,21 @@ function setHR(key, checked, el) {
   render();
 }
 
+function updateArt6Hint() {
+  const el = document.getElementById('art6BegrHint');
+  if (el) el.textContent = art6Ausnahme(state.answers).begruendungOk ? '✓ Begründung ausreichend, die Ausnahme wird angewandt.' : 'Ohne ausreichende Begründung bleibt die Einstufung Hochrisiko.';
+}
 function saveHochrisiko() {
   const a = state.answers;
-  const hrFields = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'];
-  const hrActive = hrFields.some(f => a[f]);
-  const ausnahmeGenutzt = ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]);
+  const a6 = art6Ausnahme(a);
+  const hrActive = a6.hrActive;
+  const ausnahmeGenutzt = a6.genutzt;
   if (hrActive && ausnahmeGenutzt && !a.art6_profiling) {
     alert('Bitte die Profiling-Frage beantworten — sie entscheidet, ob die Ausnahme nach Art. 6 Abs. 3 tatsächlich greift.');
+    return;
+  }
+  if (hrActive && ausnahmeGenutzt && a.art6_profiling === 'nein' && a6.sensibel && !a6.begruendungOk) {
+    alert('In den Bereichen Beschäftigung, Bildung und wesentliche Dienste wendet das Tool die Ausnahme nach Art. 6 Abs. 3 nur mit einer Begründung von mindestens ' + ART6_BEGRUENDUNG_MIN + ' Zeichen an. Bitte begründen oder die Ausnahme abwählen; ohne Ausnahme bleibt es bei Hochrisiko.');
     return;
   }
   if (!a.gpai_genutzt) {
@@ -1380,8 +1489,7 @@ function renderErgebnis() {
   const nextSteps = getNextSteps(risk, a);
 
   const verdachtSonderkategorien = (a.daten_arten || []).some(x => ['gesundheit','biometrie'].includes(x));
-  const hrAktiv = ['hr_biometrie','hr_infrastruktur','hr_bildung','hr_beschaeftigung','hr_services','hr_strafverfolgung','hr_migration','hr_justiz'].some(k => a[k]);
-  const art6GreiftWirklich = hrAktiv && ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]) && a.art6_profiling === 'nein';
+  const art6GreiftWirklich = art6Ausnahme(a).greift;
 
   const mc = document.getElementById('mainCard');
   mc.innerHTML = `
@@ -1412,7 +1520,8 @@ function renderErgebnis() {
           if (risk.class === 'begrenzt') {
             const gruende = [];
             if (a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja') gruende.push('KI-Interaktion mit Personen (nicht offensichtlich)');
-            if (a.transparenz_genai === 'ja') gruende.push('KI-erzeugte Inhalte (Art. 50 Abs. 2)');
+            if (a.transparenz_genai === 'ja' && (a.aivo_rolle || []).includes('anbieter')) gruende.push('KI-erzeugte Inhalte, Anbieterpflicht (Art. 50 Abs. 2)');
+            if (a.art50_deepfake === 'ja') gruende.push('Deepfakes (Art. 50 Abs. 4 UAbs. 1)');
             if (a.art50_text_oeffentlich === 'ja' && a.art50_text_redaktion !== 'ja') gruende.push('KI-Texte zu Themen öffentlichen Interesses (Art. 50 Abs. 4 UAbs. 2)');
             if (art6GreiftWirklich) gruende.push('Anhang III mit greifender Ausnahme nach Art. 6 Abs. 3');
             return `Auslöser: ${gruende.join(', ') || 'Transparenzpflichten Art. 50'}.`;
@@ -1429,8 +1538,9 @@ function renderErgebnis() {
           if (risk.class === 'kein-ki') return `${rollenStr}. AI-VO-Pflichten greifen nicht; klassische Sorgfaltspflichten bleiben.`;
           if (risk.class === 'verboten') return `${rollenStr}. Unabhängig von der Rolle: Implementierung nicht zulässig.`;
           const pflichtenHinweise = [];
-          if (r.includes('anbieter')) pflichtenHinweise.push('Anbieter: Art. 16 ff. — Konformitätsbewertung, Dokumentation, Qualitätsmanagement');
-          if (r.includes('betreiber')) pflichtenHinweise.push('Betreiber: Art. 26 — zweckkonforme Nutzung, Eingabedaten-Qualität, Information der Beschäftigten');
+          if (risk.class !== 'hoch') pflichtenHinweise.push('Rollenpflichten nach Art. 16 bis 27 gelten nur bei Hochrisiko; hier bleiben Art. 50 (Transparenz), Art. 4 (KI-Kompetenz) und die DSGVO');
+          if (r.includes('anbieter') && risk.class === 'hoch') pflichtenHinweise.push('Anbieter: Art. 16 ff. — Konformitätsbewertung, Dokumentation, Qualitätsmanagement');
+          if (r.includes('betreiber') && risk.class === 'hoch') pflichtenHinweise.push('Betreiber: Art. 26 — zweckkonforme Nutzung, Eingabedaten-Qualität, Information der Beschäftigten');
           if (r.includes('importeur')) pflichtenHinweise.push('Importeur: Art. 23 — Konformitätsprüfung vor Inverkehrbringen');
           if (r.includes('haendler')) pflichtenHinweise.push('Händler: Art. 24 — Sorgfaltsprüfung beim Inverkehrbringen');
           if (r.includes('vertreter')) pflichtenHinweise.push('Bevollmächtigter Vertreter: Art. 22 — Vertretung gegenüber Behörden');
@@ -1457,7 +1567,7 @@ function renderErgebnis() {
 
     ${art6GreiftWirklich && risk.class !== 'hoch' ? `
     <div class="alert alert-teal">
-      <strong>Art. 6 Abs. 3 Ausnahme angewandt:</strong> Anhang-III-Bereich ist betroffen, aber eine der vier Ausnahmen greift und kein Profiling natürlicher Personen findet statt. Folge: Klassifizierung als ${risk.label}, nicht als Hochrisiko. <strong>Trotzdem verpflichtend:</strong> Selbsteinschätzung dokumentieren (Art. 6 Abs. 4) und in EU-Datenbank registrieren (Art. 49 Abs. 2). Marktaufsicht kann jederzeit prüfen.
+      <strong>Art. 6 Abs. 3 Ausnahme angewandt:</strong> Anhang-III-Bereich ist betroffen, aber eine der vier Ausnahmen greift und kein Profiling natürlicher Personen findet statt. Folge: Klassifizierung als ${risk.label}, nicht als Hochrisiko. <strong>Trotzdem verpflichtend:</strong> Selbsteinschätzung dokumentieren (Art. 6 Abs. 4) und in EU-Datenbank registrieren (Art. 49 Abs. 2). Marktaufsicht kann jederzeit prüfen.${art6Ausnahme(a).begruendung ? ' <strong>Ihre Begründung:</strong> „' + art6Ausnahme(a).begruendung + '“' : ''} ${ART6_VORBEHALT}
     </div>` : ''}
 
     ${verdachtSonderkategorien && risk.class !== 'verboten' ? `
@@ -1505,7 +1615,7 @@ function renderErgebnis() {
 
     <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">Empfohlene nächste Schritte</h3>
     <ul class="next-steps">
-      ${nextSteps.map((s, i) => `<li><div class="ns-num">${i+1}</div><span>${s}</span></li>`).join('')}
+      ${renderSchritteHTML(nextSteps)}
     </ul>
 
     <div class="btn-row">
@@ -1567,7 +1677,8 @@ function buildExportData() {
         c_erkennen_entscheidungsmuster: !!a.art6_c,
         d_vorbereitende_aufgabe: !!a.art6_d,
         profiling: a.art6_profiling || null,
-        ausnahme_greift: ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]) && a.art6_profiling === 'nein'
+        begruendung: a.art6_begruendung || null,
+        ausnahme_greift: art6Ausnahme(a).greift
       },
       transparenzpflichten: {
         interaktion: a.transparenz_interaktion,
@@ -1584,7 +1695,7 @@ function buildExportData() {
       risikoklasse: risk ? { class: risk.class, label: risk.label, beschreibung: risk.desc } : null
     },
     governance: { sponsor: a.gov_sponsor, legal: a.gov_legal, betriebsrat: a.gov_betriebsrat, oversight: a.gov_oversight },
-    naechste_schritte: nextSteps,
+    naechste_schritte: nextSteps.map(s => { const it = parseSchritt(s); return { kategorie: it.kat, aufwand: it.aufwand || null, text: it.text }; }),
     briefing: state.briefing || null
   };
 }
@@ -1703,8 +1814,9 @@ function exportMarkdown() {
       aktiveAusnahmen.forEach(l => md += `- ${l}\n`);
     }
     md += `**Profiling natürlicher Personen:** ${a.art6_profiling === 'ja' ? '⚠️ Ja — Ausnahme greift nicht' : a.art6_profiling === 'nein' ? '✓ Nein' : '—'}  \n`;
-    const greift = aktiveAusnahmen.length && a.art6_profiling === 'nein';
-    md += `**Ergebnis:** ${greift ? '✓ Ausnahme greift — kein Hochrisiko, aber Dokumentations- und Registrierungspflicht' : '⚠️ Ausnahme greift nicht — vollständige Hochrisiko-Pflichten'}\n\n`;
+    const a6 = art6Ausnahme(a);
+    if (a6.begruendung) md += `**Begründung der Selbsteinschätzung:** ${a6.begruendung}  \n`;
+    md += `**Ergebnis:** ${a6.greift ? '✓ Ausnahme greift — kein Hochrisiko, aber Dokumentations- und Registrierungspflicht. ' + ART6_VORBEHALT : (a6.genutzt && a.art6_profiling === 'nein' && !a6.begruendungOk ? '⚠️ Ausnahme greift nicht — Begründung fehlt oder ist zu kurz, vollständige Hochrisiko-Pflichten' : '⚠️ Ausnahme greift nicht — vollständige Hochrisiko-Pflichten')}\n\n`;
   }
 
   if (a.gpai_genutzt) {
@@ -1722,7 +1834,7 @@ function exportMarkdown() {
   md += `| Prüfpunkt | Ergebnis |\n|---|---|\n`;
   const interaktionPflicht = a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja';
   md += `| Direkte Interaktion mit Personen | ${a.transparenz_interaktion === 'ja' ? (interaktionPflicht ? '⚠️ Ja — Kennzeichnungspflicht (Art. 50 Abs. 1)' : '💬 Ja, aber offensichtlich (Ausnahme Art. 50 Abs. 1 Satz 2)') : '✓ Nein'} |\n`;
-  md += `| KI-generierte Inhalte | ${a.transparenz_genai === 'ja' ? '⚠️ Ja — Kennzeichnungspflicht (Art. 50 Abs. 2)' : '✓ Nein'} |\n`;
+  md += `| KI-generierte Inhalte | ${a.transparenz_genai === 'ja' ? ((a.aivo_rolle || []).includes('anbieter') ? '⚠️ Ja — Kennzeichnungspflicht als Anbieter (Art. 50 Abs. 2)' : 'ℹ️ Ja — maschinenlesbare Markierung ist Pflicht des Modellanbieters (Art. 50 Abs. 2)') : '✓ Nein'} |\n`;
   if (a.art50_deepfake) {
     md += `| Deepfakes / synthetische Bilder/Audio/Video | ${a.art50_deepfake === 'ja' ? '⚠️ Ja — Kennzeichnungspflicht (Art. 50 Abs. 4)' : '✓ Nein'} |\n`;
   }
@@ -1758,7 +1870,7 @@ function exportMarkdown() {
   md += `\n`;
 
   md += `## Empfohlene nächste Schritte\n\n`;
-  nextSteps.forEach((s, i) => md += `${i + 1}. ${s}\n`);
+  md += schritteMarkdown(nextSteps);
 
   if (state.briefing) {
     md += `\n---\n\n## Stakeholder-Briefing\n\n${state.briefing}\n`;
@@ -1800,13 +1912,14 @@ function detectVorpruefungsSchwaechen(a) {
   const wb = (a.wertbeitrag || '').trim();
   const alt = (a.alternative || '').trim();
   // Wertbeitrag prüfen
-  if (wb.length < 60) {
+  const hatZahl = /[0-9]/.test(wb) || /\b(von|auf|statt|pro|halb|doppelt|drittel|viertel)\b/i.test(wb);
+  if (wb.length < 60 && !hatZahl) {
     schwaechen.push({ feld: 'Wertbeitrag', text: wb || '(leer)', grund: 'sehr knapp formuliert — konkrete Zahl, Zielgröße oder Vergleich fehlt' });
   } else if (vagueWords.test(wb) && !/[0-9]/.test(wb)) {
     schwaechen.push({ feld: 'Wertbeitrag', text: wb, grund: 'verwendet vage Begriffe ohne messbare Größe' });
   }
   // Alternative prüfen
-  if (alt.length < 50) {
+  if (alt.length < 50 && !/\b(weil|da|reicht|deckt|decken|nur|aber|jedoch|zu wenig|fehlt)\b/i.test(alt)) {
     schwaechen.push({ feld: 'Geprüfte Alternative', text: alt || '(leer)', grund: 'sehr knapp — welche konkrete Alternative wurde wirklich verglichen, und warum reicht sie nicht?' });
   }
   // Reifegrad „unklar" ist eine Schwäche
@@ -1829,8 +1942,7 @@ function briefingDataPack(a, risk) {
     hr_justiz:'Rechtspflege und demokratische Prozesse'
   };
   const aktiveHR = Object.keys(hrLabels).filter(k => a[k]).map(k => hrLabels[k]);
-  const ausnahmen = ['art6_a','art6_b','art6_c','art6_d'].some(k => a[k]);
-  const art6Greift = aktiveHR.length && ausnahmen && a.art6_profiling === 'nein';
+  const art6Greift = art6Ausnahme(a).greift;
   const arten = labelize(DATEN_ARTEN_LABELS, a.daten_arten);
   const wirkungAufPersonen = (a.nutzer||[]).some(n => ['extern_kunden','extern_dritte','behoerden'].includes(n))
                               || a.hr_beschaeftigung || a.hr_services || a.hr_bildung;
@@ -1865,7 +1977,7 @@ function briefingManagement(a, risk) {
     hoch: `Hochrisiko-System nach Anhang III${d.aktiveHR.length ? ' (' + d.aktiveHR.join(', ') + ')' : ''}. Vor Inverkehrbringen Konformitätsbewertung, Dokumentation und Registrierung; die Pflichten gelten ab 02.12.2027, Aufwand und Vorlauf jetzt einplanen.`,
     begrenzt: 'Begrenztes Risiko mit Transparenzpflichten nach Art. 50 — überschaubarer Compliance-Aufwand, aber Pflichten greifen heute schon.',
     minimal: 'Minimales Risiko nach EU AI Act. Datenschutz und ggf. AGG bleiben relevant.'
-  }[risk.class];
+  }[risk.class] + (d.art6Greift ? ' ' + ART6_VORBEHALT : '');
 
   return `${briefingHeader('management')}${briefingSchwaechen(a)}
 ## Worum es geht
@@ -1886,7 +1998,7 @@ ${d.art22Relevant ? '- DSGVO Art. 22 (automatisierte Einzelentscheidung): Rechts
 ${d.biasRisiko && a.bias_pruefung !== 'ja' ? '- Bias-Prüfung im Beschaffungs- oder Entwicklungsprozess verankern' : ''}
 
 ## Empfehlung für die nächsten 4 Wochen
-${a.gov_sponsor !== 'ja' ? '1. Sponsor benennen, Mandat klären, Budget skizzieren.\n' : ''}${a.gov_legal !== 'ja' ? '2. Kick-off mit Legal und DSB — Datenfluss, Risikoklasse, Betroffenenrechte.\n' : ''}3. PoC-Scope eng definieren, Zeitrahmen 4–8 Wochen, klare Abbruchkriterien.
+${(() => { const e = []; if (a.gov_sponsor !== 'ja') e.push('Sponsor benennen, Mandat klären, Budget skizzieren.'); if (a.gov_legal !== 'ja') e.push('Kick-off mit Legal und DSB — Datenfluss, Risikoklasse, Betroffenenrechte.'); e.push('PoC-Scope eng definieren, Zeitrahmen 4–8 Wochen, klare Abbruchkriterien.'); return e.map((x, i) => `${i + 1}. ${x}`).join('\n'); })()}
 ${briefingFooter()}`;
 }
 
@@ -1896,16 +2008,16 @@ function briefingCompliance(a, risk) {
   const pflichten = [];
   const rollen = a.aivo_rolle || [];
   // Rollenspezifische Pflichten
-  if (rollen.includes('anbieter')) {
+  if (rollen.includes('anbieter') && risk.class === 'hoch') {
     pflichten.push('Anbieter-Pflichten Art. 16 ff.: Konformitätsbewertung, technische Dokumentation, Qualitätsmanagementsystem (harmonisierte Norm EN 18286:2026), Post-Market-Monitoring, ggf. CE-Kennzeichnung');
   }
   if (rollen.includes('betreiber') && risk.class === 'hoch') {
     pflichten.push('Betreiber-Pflichten Art. 26: zweckkonforme Nutzung, Eingabedaten-Qualität, Human Oversight wirksam machen, Logs aufbewahren, Information der betroffenen Beschäftigten');
   }
-  if (rollen.includes('importeur')) {
+  if (rollen.includes('importeur') && risk.class === 'hoch') {
     pflichten.push('Importeur-Pflichten Art. 23: Konformitätsbewertung des Anbieters prüfen, CE-Kennzeichnung kontrollieren, eigene Kontaktdaten anbringen');
   }
-  if (rollen.includes('haendler')) {
+  if (rollen.includes('haendler') && risk.class === 'hoch') {
     pflichten.push('Händler-Pflichten Art. 24: Sorgfaltsprüfung beim Inverkehrbringen, CE-Kennzeichnung und Begleitdokumente sichten');
   }
   if (rollen.includes('vertreter')) {
@@ -1916,13 +2028,13 @@ function briefingCompliance(a, risk) {
     pflichten.push('Risikomanagement-System (Art. 9)', 'Daten-Governance, Bias-Mitigation (Art. 10)', 'Technische Dokumentation (Anhang IV)', 'Transparenz und Information (Art. 13)', 'Human Oversight (Art. 14)', 'Konformitätsbewertung (Art. 43)', 'Registrierung in der EU-Datenbank (Art. 49, Art. 71)');
   }
   if (d.art6Greift) {
-    pflichten.push('Selbsteinschätzung Art. 6 Abs. 3 dokumentieren (Art. 6 Abs. 4)', 'Registrierung trotz Ausnahme (Art. 49 Abs. 2)');
+    pflichten.push('Selbsteinschätzung Art. 6 Abs. 3 dokumentieren (Art. 6 Abs. 4)' + (art6Ausnahme(a).begruendung ? ' — Begründung: „' + art6Ausnahme(a).begruendung + '“' : ''), 'Registrierung trotz Ausnahme (Art. 49 Abs. 2)');
   }
   if (a.transparenz_interaktion === 'ja' && a.art50_offensichtlich !== 'ja') pflichten.push('Kennzeichnung der KI-Interaktion (Art. 50 Abs. 1)');
-  if (a.transparenz_genai === 'ja') pflichten.push('Maschinenlesbare Kennzeichnung KI-generierter Inhalte (Art. 50 Abs. 2)');
+  if (a.transparenz_genai === 'ja' && rollen.includes('anbieter')) pflichten.push('Maschinenlesbare Kennzeichnung KI-generierter Inhalte (Art. 50 Abs. 2, Anbieterpflicht)');
   if (a.art50_deepfake === 'ja') pflichten.push('Deepfake-Kennzeichnung (Art. 50 Abs. 4)');
   if (a.art50_text_oeffentlich === 'ja' && a.art50_text_redaktion !== 'ja') pflichten.push('Kennzeichnung KI-generierter Texte zu Themen öffentlichen Interesses (Art. 50 Abs. 4 UAbs. 2)');
-  if (a.gpai_rolle === 'modifizierer') pflichten.push('Substantielle-Modifikation-Schwelle nach Art. 25 prüfen, ggf. Provider-Pflichten Art. 53');
+  if (a.gpai_rolle === 'modifizierer') pflichten.push('Dokumentation der Modellanpassung: Prompting, RAG und Integration machen nicht zum Modellanbieter; Art. 53 erst bei erheblicher Veränderung des Modells (Kommissions-Leitlinien zu GPAI)');
   if (a.gpai_rolle === 'provider') pflichten.push('GPAI-Provider-Pflichten Art. 53', a.gpai_rolle === 'provider' ? 'Bei systemischem Risiko zusätzlich Art. 55 (10²⁵-FLOPs-Schwelle)' : '');
   if (a.daten_personenbezogen === 'ja') pflichten.push('DSFA-Schwellenwertprüfung (DSGVO Art. 35)');
   if (d.sonderkategorien) pflichten.push('Rechtsgrundlage für besondere Kategorien (Art. 9 DSGVO), DSFA wahrscheinlich');
@@ -1939,7 +2051,7 @@ function briefingCompliance(a, risk) {
 **AI-VO-Rolle:** ${labelize(ROLLE_LABELS, a.aivo_rolle).join(', ') || '—'}
 
 ## Klassifizierung mit Begründung
-**AI Act:** ${risk.label}. ${risk.desc}
+**AI Act:** ${risk.label}. ${risk.desc}${d.art6Greift ? ' ' + ART6_VORBEHALT : ''}
 ${d.aktiveHR.length ? `**Anhang III:** ${d.aktiveHR.join(', ')}${d.art6Greift ? '. Ausnahme Art. 6 Abs. 3 angewandt — kein Profiling.' : '.'}` : ''}
 ${a.gpai_genutzt === 'ja' ? `**GPAI:** Foundation Model im Einsatz, Rolle: ${ {deployer:'Deployer',modifizierer:'Modifizierer',provider:'Provider'}[a.gpai_rolle] || 'unklar'}.` : ''}
 
@@ -1991,6 +2103,7 @@ function briefingBetriebsrat(a, risk) {
 Im Bereich **${a.bereich || '—'}** soll eine KI-Lösung eingeführt werden: ${a.problem_text || '—'}
 **Wer ist betroffen:** ${labelize(NUTZER_LABELS, a.nutzer).join(', ') || '—'}
 **Wie arbeitet die KI:** ${autoGrad}
+${d.art6Greift ? '**Einstufung nach EU AI Act:** ' + risk.label + '. ' + ART6_VORBEHALT : ''}
 
 ## Mitarbeiterbezug
 ${internBetroffen ? '· Mitarbeitende werden direkt mit dem System arbeiten oder von seinen Ausgaben betroffen sein.' : '· Mitarbeitende sind nicht primär adressiert.'}

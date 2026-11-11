@@ -61,16 +61,25 @@ Bei einem Verbotstreffer in Schritt 4 springt das Tool direkt zum Ergebnis — d
 1. Art. 5 Abs. 1 lit. a–h, ba, bb Verbote? → UNZULÄSSIG (früher Ausstieg)
 2. Anhang III Hochrisiko-Bereich?
    → Filter Art. 6 Abs. 3: Ausnahme angeklickt + kein Profiling? → Klassifizierung fällt
+   → in Beschäftigung (Nr. 4), Bildung (Nr. 3) und wesentlichen Diensten (Nr. 5) zusätzlich: schriftliche Begründung
+     mit mindestens 80 Zeichen, sonst bleibt HOCHRISIKO (Plausibilitätsschranke, seit v1.3)
    → sonst: HOCHRISIKO
 3. Art. 50 Transparenzpflichten?
    → Interaktion + offensichtlich? → keine Begrenzt-Klassifizierung allein wegen Interaktion
-   → GenAI ja oder nicht-offensichtliche Interaktion? → BEGRENZTES RISIKO
+   → nicht-offensichtliche Interaktion → BEGRENZTES RISIKO
+   → KI-Inhalte: BEGRENZTES RISIKO nur, wenn die Organisation Anbieter ist (Art. 50 Abs. 2), bei Deepfakes (Abs. 4 UAbs. 1)
+     oder bei veröffentlichten Texten zu Themen öffentlichen Interesses ohne menschliche Prüfung (Abs. 4 UAbs. 2).
+     Reiner Betreiber mit menschlich geprüften KI-Texten → kein Art.-50-Auslöser, Hinweis auf die Anbieterpflicht
 4. Sonst → MINIMALES RISIKO
 ```
 
 GPAI-Status wird parallel zur Klassifikation erhoben und löst eigene Hinweise aus, unabhängig von der Risikoklasse.
 
 DSGVO Art. 22 prüft das Tool heuristisch: Vollautomatisch + personenbezogene Daten + Wirkung auf Personen → eigener Alert mit Schutzpflichten.
+
+Greift die Ausnahme nach Art. 6 Abs. 3, tragen Ergebnis, Exporte und alle drei Briefings den Vorbehalt: „Diese Einstufung gilt nur unter der Ausnahme nach Art. 6 Abs. 3: ohne dokumentierte Selbsteinschätzung und Registrierung gilt Hochrisiko."
+
+**Nächste Schritte** kommen in drei Kategorien mit Aufwandsklasse: Pflicht (rechtliche Pflicht oder Voraussetzung), Empfohlen (fachlich sinnvoll), Projekt (Projekt-Hygiene); Aufwand Stunden, Tage, Wochen oder Extern. Die Ergebnisseite zeigt fünf Schritte, der Rest ist einklappbar. Rollenpflichten nach Art. 16 bis 27 erscheinen nur bei Hochrisiko.
 
 ---
 
@@ -139,13 +148,13 @@ generateBriefing()         — Template-basiertes Stakeholder-Briefing, lokal
   "aiact": {
     "verbotene_praktiken": { "manipulation_lit_a": "...", ..., "csam_lit_bb": "..." },
     "hochrisiko_kategorien": ["..."],
-    "art6_abs3_ausnahme": { "a_eng_begrenzte_aufgabe": false, ..., "ausnahme_greift": false },
+    "art6_abs3_ausnahme": { "a_eng_begrenzte_aufgabe": false, ..., "profiling": "...", "begruendung": "...", "ausnahme_greift": false },
     "transparenzpflichten": { "interaktion": "...", "interaktion_offensichtlich": "...", "genai": "...", "deepfake": "...", "text_oeffentliches_interesse": "...", "text_menschlich_geprueft": "..." },
     "gpai": { "genutzt": "...", "rolle": "..." },
     "risikoklasse": { "class": "...", "label": "...", "beschreibung": "..." }
   },
   "governance": { "sponsor": "...", "legal": "...", "betriebsrat": "...", "oversight": "..." },
-  "naechste_schritte": ["..."],
+  "naechste_schritte": [{ "kategorie": "Pflicht|Empfohlen|Projekt", "aufwand": "Stunden|Tage|Wochen|Extern", "text": "..." }],
   "briefing": "..."
 }
 ```
@@ -211,6 +220,8 @@ MIT-Lizenz — siehe [`LICENSE`](LICENSE). Nutzung, Anpassung und Weitergabe sin
 - Neue Startseite „Über das Tool" (was es kann, wie es funktioniert, Grenzen, was beim Menschen bleibt), erreichbar jederzeit über den Link im Kopfbereich; erscheint beim ersten Aufruf vor Schritt 1
 - Farbgebung auf das Blau von poeppelbaum.eu umgestellt (Akzent #1e3a8a, Tinte #0a1530, Papier #f5f2eb); Variablennamen im CSS unverändert
 - `logiktest.js`: Node-Testskript ohne Browser (`node logiktest.js index.html`), prüft Klassifizierung, Hinweise, Exporte, Briefing und Zeitleisten; `FAKE_TODAY=2026-12-03` simuliert den Stichtag
+- Nach kritischer Prüfung aus KI-Manager- und KMU-Sicht (11.11.2026): Plausibilitätsschranke für Art. 6 Abs. 3 in Beschäftigung, Bildung und wesentlichen Diensten (Begründungspflicht, Warnhinweis mit Anhang-III-Wortlaut); Vorbehalt der Ausnahme in Ergebnis, Exporten und allen Briefings; Rollenpflichten Art. 16 bis 27 nur noch bei Hochrisiko; KI-Inhalte lösen „Begrenzt" nur noch bei Anbieterrolle, Deepfakes oder Texten zu Themen öffentlichen Interesses aus; nächste Schritte mit Kategorie (Pflicht, Empfohlen, Projekt) und Aufwandsklasse, fünf sichtbar, Rest einklappbar; Schwächen-Heuristik erkennt Zahlen und Begründungen; Nummerierung im Management-Briefing dynamisch; GPAI-Anpassung (Prompting, RAG) nicht mehr als Anbieterwechsel nach Art. 25 dargestellt
+- Startseite mit ausklappbarem Beispiel „Kundenservice-Chatbot in sieben Schritten"
 
 **v1.2 — August 2026**
 - Rechtsstand auf Verordnung (EU) 2026/1744 („Digital Omnibus on AI") gehoben — Geltungsdaten-Zeitleiste aktualisiert: Hochrisiko Anhang III ab 02.12.2027, Anhang I ab 02.08.2028, Art. 50 unverändert seit 02.08.2026 mit viermonatiger Übergangsfrist für Bestandssysteme bei Abs. 2
