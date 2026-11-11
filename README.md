@@ -5,7 +5,7 @@
 Das Werkzeug beantwortet in sieben Schritten eine Frage: Lohnt sich dieses KI-Vorhaben — und was verlangt das Recht dafür? Es kombiniert eine Wertbeitrag-Vorprüfung mit der Risikoklassifizierung nach EU AI Act, einer GPAI-Einordnung, DSGVO-Hinweisen und einem Briefing für Stakeholder.
 
 Entwickelt von **Yvonne Pöppelbaum** · AI Adoption · Regulatory Intelligence
-Stand: August 2026 · Version 1.2 · MIT-Lizenz
+Stand: November 2026 · Version 1.3 · MIT-Lizenz
 
 ---
 
@@ -15,7 +15,7 @@ Stand: August 2026 · Version 1.2 · MIT-Lizenz
 - **AI-Act-Risikoklassifizierung** in vier Stufen mit präziser Logik:
   - 🚫 Unzulässig — Art. 5 Abs. 1 vollständig: lit. a–h plus die durch VO (EU) 2026/1744 eingefügten lit. ba und bb (zehn Verbote)
   - ⚠️ Hochrisiko — Anhang III mit Filter Art. 6 Abs. 3 (vier Ausnahmetatbestände, Profiling-Override)
-  - 💬 Begrenztes Risiko — Art. 50 mit Offensichtlich-Ausnahme (Abs. 1 Satz 2) und Deepfake-Differenzierung (Abs. 4)
+  - 💬 Begrenztes Risiko — Art. 50 mit Offensichtlich-Ausnahme (Abs. 1 Satz 2), Deepfake-Differenzierung (Abs. 4 UAbs. 1) und Kennzeichnung KI-generierter Texte zu Themen öffentlichen Interesses (Abs. 4 UAbs. 2, mit Ausnahme bei menschlicher Prüfung und redaktioneller Verantwortung)
   - ✅ Minimales Risiko
 - **GPAI-Einordnung** für Foundation Models mit Rollendifferenzierung Deployer / Modifizierer / Provider und Verweis auf den GPAI Code of Practice (10. Juli 2025)
 - **DSGVO-Hinweise** bei besonderen Datenkategorien (Art. 9), DSFA-Schwellenwert (Art. 35), automatisierter Einzelentscheidung (Art. 22)
@@ -32,7 +32,7 @@ Stand: August 2026 · Version 1.2 · MIT-Lizenz
 
 - **Keine Rechtsberatung.** Die Klassifizierung ist eine strukturierte Ersteinschätzung. Hochrisiko-Fälle, Art.-6-Abs.-3-Ausnahmen und unklare GPAI-Konstellationen erfordern juristische Prüfung.
 - **Keine Konformitätsbewertung.** Risikomanagement-System (Art. 9), technische Dokumentation (Anhang IV), Konformitätsverfahren (Art. 43), EU-Datenbank-Registrierung (Art. 49, Art. 71) sind eigene Prozesse — das Tool nennt sie, führt sie aber nicht durch.
-- **Keine MDR/IVDR-Prüfung.** Für KI-basierte Medizinprodukte gelten zusätzlich MDR/IVDR und ISO 13485. Das Tool weist darauf hin, ersetzt die Prüfung aber nicht.
+- **Keine Anhang-I-Prüfung, keine MDR/IVDR-Prüfung.** Das Tool prüft nur Anhang III. KI als Sicherheitsbauteil oder eigenständiges Produkt unter Harmonisierungsrecht (Anhang I, z. B. MDR/IVDR, Maschinen) ist Hochrisiko nach Art. 6 Abs. 1 mit Geltung ab 02.08.2028; seit dem Omnibus gelten reine Unterstützungs- und Qualitätskontrollfunktionen nicht als Sicherheitsbauteil (Art. 6 Abs. 1a bis 1c). Das Tool weist darauf hin, ersetzt die Prüfung aber nicht.
 - **Keine inhaltliche Validierung.** Wer „Effizienz steigern" als Wertbeitrag einträgt, bekommt trotzdem eine Bewertung — die Vorprüfung macht die Lücke nur sichtbar.
 - **Keine Datenübertragung, Speicherung nur auf Wunsch.** Standardmäßig leben alle Eingaben in der laufenden Browser-Sitzung und sind beim Schließen des Tabs weg — deshalb: vor dem Schließen exportieren. Wer die Zwischenspeicherung aktiviert (Checkbox in Schritt 1), speichert die Bewertung ausschließlich im lokalen Browser-Storage; an Server wird nie etwas übertragen.
 - **Kein Ersatz für Stakeholder-Gespräche.** Eine Bewertung in 15 Minuten ist ein Ausgangspunkt, kein Abschluss.
@@ -47,7 +47,7 @@ Stand: August 2026 · Version 1.2 · MIT-Lizenz
 | 2 | Problemdefinition | Geschäftsproblem, Bereich, Nutzer:innen, KPI, Automatisierungsgrad |
 | 3 | Datenlage | Personenbezogene Daten ja/nein, Datenkategorien, Verfügbarkeit |
 | 4 | Verbotsprüfung | Zehn Praktiken nach Art. 5 Abs. 1 lit. a–h, ba und bb |
-| 5 | Hochrisiko + Art. 50 + GPAI | Anhang-III-Bereiche, Art.-6-Abs.-3-Ausnahmen, Foundation-Model-Rolle, Transparenzfragen |
+| 5 | Hochrisiko + Art. 50 + GPAI | Anhang-III-Bereiche, Art.-6-Abs.-3-Ausnahmen, Foundation-Model-Rolle, Transparenzfragen (Interaktion, KI-Inhalte, Deepfakes, KI-Texte zu Themen öffentlichen Interesses) |
 | 6 | Governance | Sponsor, Legal, Betriebsrat, Human Oversight |
 | 7 | Ergebnis | Klassifizierung, Geltungsdaten-Zeitleiste, nächste Schritte, Briefing, Export |
 
@@ -77,6 +77,8 @@ DSGVO Art. 22 prüft das Tool heuristisch: Vollautomatisch + personenbezogene Da
 ## Nutzung
 
 ### Sofort starten
+
+Beim ersten Aufruf zeigt das Tool die Seite „Über das Tool": was es kann, wie es funktioniert, wo die Grenzen liegen und was beim Menschen bleibt. Der Link im Kopfbereich führt jederzeit dorthin zurück.
 
 **Online:** https://poeppi.github.io/ki-usecase-bewertung/ — der schnellste Weg.
 
@@ -130,7 +132,7 @@ generateBriefing()         — Template-basiertes Stakeholder-Briefing, lokal
 
 ```json
 {
-  "meta": { "tool": "KI Use-Case Bewertung", "version": "1.2", "exported_at": "..." },
+  "meta": { "tool": "KI Use-Case Bewertung", "version": "1.3", "exported_at": "..." },
   "wertbeitrag": { "wertbeitrag": "...", "reifegrad": "...", "alternative": "..." },
   "problem": { "text": "...", "bereich": "...", "nutzer": ["..."], "kpi": "..." },
   "daten": { "personenbezogen": "ja|nein", "arten": ["..."], "verfuegbar": "..." },
@@ -138,7 +140,7 @@ generateBriefing()         — Template-basiertes Stakeholder-Briefing, lokal
     "verbotene_praktiken": { "manipulation_lit_a": "...", ..., "csam_lit_bb": "..." },
     "hochrisiko_kategorien": ["..."],
     "art6_abs3_ausnahme": { "a_eng_begrenzte_aufgabe": false, ..., "ausnahme_greift": false },
-    "transparenzpflichten": { "interaktion": "...", "interaktion_offensichtlich": "...", "genai": "...", "deepfake": "..." },
+    "transparenzpflichten": { "interaktion": "...", "interaktion_offensichtlich": "...", "genai": "...", "deepfake": "...", "text_oeffentliches_interesse": "...", "text_menschlich_geprueft": "..." },
     "gpai": { "genutzt": "...", "rolle": "..." },
     "risikoklasse": { "class": "...", "label": "...", "beschreibung": "..." }
   },
@@ -161,8 +163,10 @@ generateBriefing()         — Template-basiertes Stakeholder-Briefing, lokal
 
 ### Regulatorische Grenzen
 
-- Stand der Auslegung: August 2026, inklusive der Verordnung (EU) 2026/1744 („Digital Omnibus on AI", in Kraft seit 27.07.2026): zwei neue Verbote (Art. 5 Abs. 1 lit. ba/bb), Hochrisiko-Pflichten für Anhang-III-Systeme verschoben auf 02.12.2027, Anhang I auf 02.08.2028; Art. 50 gilt unverändert seit 02.08.2026.
-- Die Kommissions-Leitlinien zur Hochrisiko-Einstufung nach Art. 6 Abs. 5 liegen seit 19.05.2026 als Entwurf vor, sind aber nicht final — das Tool weist darauf hin und empfiehlt restriktive Auslegung.
+- Stand der Auslegung: November 2026, inklusive der Verordnung (EU) 2026/1744 („Digital Omnibus on AI", in Kraft seit 27.07.2026): zwei neue Verbote (Art. 5 Abs. 1 lit. ba/bb, anwendbar ab 02.12.2026), Hochrisiko-Pflichten für Anhang-III-Systeme verschoben auf 02.12.2027, Anhang I auf 02.08.2028; Art. 50 gilt unverändert seit 02.08.2026, Bestandssysteme haben bei Abs. 2 bis 02.12.2026 Zeit; Art. 4 (KI-Kompetenz) als Förderpflicht formuliert.
+- Berücksichtigt sind außerdem: Leitlinien der Kommission zu Art. 50 (20.07.2026), Verhaltenskodex zur Transparenz KI-generierter Inhalte (final 10.06.2026), GPAI Code of Practice (10.07.2025, Unterzeichnerstand 07.10.2026), Durchführungsverordnung (EU) 2026/1755 (GPAI-Durchsetzung durch das AI Office seit 02.08.2026), harmonisierte Norm EN 18286:2026 (Qualitätsmanagement, Art. 17) und in Deutschland das KI-MIG (29.07.2026) mit der Bundesnetzagentur als zentraler Marktüberwachungs- und Beschwerdestelle.
+- Die Kommissions-Leitlinien zur Hochrisiko-Einstufung nach Art. 6 Abs. 5 liegen seit 19.05.2026 als Entwurf vor; eine finale Fassung lag im November 2026 nicht vor. Das Tool weist darauf hin und empfiehlt restriktive Auslegung.
+- Datumsabhängige Texte: Die Formulierung zu den Verboten lit. ba/bb („gilt ab" bzw. „gilt seit" 02.12.2026) und die Markierung „aktiv / ab dann" in der Zeitleiste richten sich nach dem Systemdatum des Browsers.
 - Art. 5 Abs. 1 lit. f und g (Emotionserkennung, biometrische Kategorisierung) haben Ausnahmetatbestände (medizinische Zwecke, Sicherheit, Strafverfolgung). Das Tool fragt das nicht im Detail ab.
 - Anhang III Nr. 4 und Nr. 5 (Beschäftigung, wesentliche Dienste) hängen am Tatbestand „wesentliche Beeinflussung der Entscheidung". Bei Grenzfällen: Legal hinzuziehen.
 - Marktaufsicht prüft die **faktische Wirkung**, nicht die im Tool angegebene Zweckbestimmung.
@@ -191,11 +195,22 @@ MIT-Lizenz — siehe [`LICENSE`](LICENSE). Nutzung, Anpassung und Weitergabe sin
 
 - Vanilla JavaScript (kein Framework)
 - Schriften: IBM Plex Sans und IBM Plex Mono, selbst gehostet oder Systemschrift-Fallback — kein CDN-Abruf (DSGVO)
-- Regulatorische Grundlage: EU AI Act (Verordnung 2024/1689, geändert durch Verordnung (EU) 2026/1744), DSGVO, BetrVG, GPAI Code of Practice (10. Juli 2025)
+- Regulatorische Grundlage: EU AI Act (Verordnung 2024/1689, geändert durch Verordnung (EU) 2026/1744), Leitlinien der Kommission zu Art. 50, Verhaltenskodex zur Transparenz KI-generierter Inhalte, GPAI Code of Practice (10. Juli 2025), EN 18286:2026, DSGVO, BetrVG, AGG, KI-MIG
 
 ---
 
 ## Versionshistorie
+
+**v1.3 — November 2026**
+- Korrektur: Die neuen Verbote Art. 5 Abs. 1 lit. ba/bb gelten ab 02.12.2026, nicht seit dem Inkrafttreten der Omnibus-Verordnung am 27.07.2026 (Art. 113 lit. a n. F.). Texte dazu kippen datumsabhängig von „gilt ab" zu „gilt seit"
+- Zeitleisten (Ergebnis-Card, Markdown-Export, Briefing) um 02.12.2026 (neue Verbote, Ende der Übergangsfrist Art. 50 Abs. 2) und 02.08.2027 (Alt-GPAI-Modelle, Art. 111 Abs. 3) ergänzt; Hochrisiko-Hinweise nennen das Geltungsdatum 02.12.2027
+- Neue Frage in Schritt 5: KI-generierte Texte zu Themen öffentlichen Interesses (Art. 50 Abs. 4 UAbs. 2) mit Ausnahme bei menschlicher Prüfung und redaktioneller Verantwortung; Auslöser, nächste Schritte, Exporte und Briefing erweitert
+- Hinweise ergänzt: Leitlinien zu Art. 50 und Transparenz-Verhaltenskodex, Art. 4 als Förderpflicht, GPAI-Durchsetzung durch das AI Office und Unterzeichnerstand des GPAI-Kodex, Bias-Erkennung mit besonderen Datenkategorien außerhalb Hochrisiko, Bundesnetzagentur und KI-MIG, EN 18286:2026, KI-Reallabor bei Eigenentwicklung
+- Medizinprodukte-Hinweis korrigiert: MDR/IVDR läuft über Anhang I, nicht Anhang III
+- Rechtsstand im Footer und Versionsstempel auf November 2026; `STORAGE_KEY` bewusst unverändert, damit gespeicherte Bewertungen erhalten bleiben
+- Neue Startseite „Über das Tool" (was es kann, wie es funktioniert, Grenzen, was beim Menschen bleibt), erreichbar jederzeit über den Link im Kopfbereich; erscheint beim ersten Aufruf vor Schritt 1
+- Farbgebung auf das Blau von poeppelbaum.eu umgestellt (Akzent #1e3a8a, Tinte #0a1530, Papier #f5f2eb); Variablennamen im CSS unverändert
+- `logiktest.js`: Node-Testskript ohne Browser (`node logiktest.js index.html`), prüft Klassifizierung, Hinweise, Exporte, Briefing und Zeitleisten; `FAKE_TODAY=2026-12-03` simuliert den Stichtag
 
 **v1.2 — August 2026**
 - Rechtsstand auf Verordnung (EU) 2026/1744 („Digital Omnibus on AI") gehoben — Geltungsdaten-Zeitleiste aktualisiert: Hochrisiko Anhang III ab 02.12.2027, Anhang I ab 02.08.2028, Art. 50 unverändert seit 02.08.2026 mit viermonatiger Übergangsfrist für Bestandssysteme bei Abs. 2
