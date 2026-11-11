@@ -400,7 +400,7 @@ input[type="text"]:focus, textarea:focus, select:focus {
     <h1>KI Use-Case Bewertung & AI Act Klassifizierung</h1>
     <p>Strukturierte Erstbewertung · Risikoklassifizierung · Stakeholder-Briefing</p>
   </div>
-  <a href="#" class="header-link" onclick="openIntro(); return false;">Über das Tool</a>
+  <a href="#" class="header-link" onclick="openIntro(); return false;">Startseite · Über das Tool</a>
 </div>
 <div id="alterungBanner" class="alterung" role="status" style="display:none"></div>
 
@@ -1165,6 +1165,7 @@ document.addEventListener('keydown', e => {
 
 function goBack() {
   if (state.step <= 0) return;
+  syncFelder();
   state.step = (state.step === 6 && state.blocked) ? 3 : state.step - 1;
   state.blocked = false; state.beispiel = null;
   render();
@@ -1193,7 +1194,7 @@ function renderWertbeitrag() {
     <div class="check-group">
       ${reifegrade.map(([v,l,sub]) => `
       <label class="check-option ${a.reifegrad === v ? 'checked' : ''}">
-        <input type="radio" name="reifegrad" ${a.reifegrad === v ? 'checked' : ''} onchange="state.answers.reifegrad='${v}';render()">
+        <input type="radio" name="reifegrad" ${a.reifegrad === v ? 'checked' : ''} onchange="syncFelder();state.answers.reifegrad='${v}';render()">
         <div class="opt-text"><strong>${l}</strong><span>${sub}</span></div>
       </label>`).join('')}
     </div>
@@ -1413,7 +1414,18 @@ function renderDaten() {
   'Weiter', 'saveDaten()');
 }
 
+// Offene Eingaben aus Textfeldern und Auswahllisten sichern, bevor ein Klick die Karte neu zeichnet.
+// Sonst springen Bereich, Problemtext oder KPI auf den zuletzt gespeicherten Stand zurück.
+const SYNC_FELDER = { f_wertbeitrag: 'wertbeitrag', f_alternative: 'alternative', f_problem: 'problem_text', f_kpi: 'kpi', f_bereich: 'bereich' };
+function syncFelder() {
+  Object.entries(SYNC_FELDER).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el && typeof el.tagName === 'string' && typeof el.value === 'string') state.answers[key] = el.value;
+  });
+}
+
 function setYN(field, val, el) {
+  syncFelder();
   state.answers[field] = val;
   el.closest('.yn-group').querySelectorAll('.yn-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
@@ -1634,6 +1646,7 @@ function renderHochrisiko() {
 }
 
 function setHR(key, checked, el) {
+  syncFelder();
   state.answers[key] = checked;
   if (checked) el.classList.add('checked'); else el.classList.remove('checked');
   render();
